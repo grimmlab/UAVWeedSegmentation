@@ -16,11 +16,27 @@ def create_train_parser():
 
     my_parser.add_argument('architecture',
                         type=str,
-                        help='String of an architecture, implemented: fcn, deeplabv3')
+                        help='String of an architecture, implemented: fcn, fcn8s, fcn16s, fcn32s, deeplabv3')
 
-    my_parser.add_argument('feature_extractor',
+    my_parser.add_argument('encoder_name',
                         type=str,
-                        help='String of a feature extractor, implemented: resnet50, resnet101')
+                        help='String of an encoder (feature extractor), implemented: resnet18, resnet34, resnet50, resnet101')
+    
+    my_parser.add_argument('--pretrained',
+                        help='Bool, if True will use a pretrained feature extractor (on ImageNet)',
+                        action='store_true')
+
+    my_parser.add_argument('--b_bn',
+                        help='Bool, if True will use batch normalization in FCN decoder.',
+                        action='store_true')
+    
+    my_parser.add_argument('--b_bilinear',
+                        help='Bool, if True will use bilinear interpolation, if False will use transposed convolutions',
+                        action='store_true')
+
+    my_parser.add_argument('--replace_stride_with_dilation',
+                        help='Bool, if True will replace strides with dilated convolutions',
+                        action='store_true')
 
     my_parser.add_argument('--b_clean_study',
                         help='Bool, if True will delete all Trials and start a fresh study',
