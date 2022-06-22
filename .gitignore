@@ -1,3 +1,11 @@
+# project related
+data/trainval/patches
+data/test/patches
+data/test_different_bbch/patches
+todo.md
+models/*
+check_*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
