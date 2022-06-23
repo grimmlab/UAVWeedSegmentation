@@ -3,7 +3,7 @@ import torch
 import torchvision.models as models
 from tqdm import tqdm
 import kornia
-from utils.dataset import UAVDatasetPatches
+from utils.dataset import UAVDatasetPatches, UAVDatasetPatchesH5
 from torch.utils.data import DataLoader
 import random
 import os
@@ -68,6 +68,43 @@ def seed_all(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
+def get_loadersh5(h5file, fold, mean, std, batch_size, num_workers=4, pin_memory=True):
+    train_transform = A.Compose(
+        [    
+            A.HorizontalFlip(),
+            A.VerticalFlip(),
+            #A.MotionBlur(),
+            #A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.50, rotate_limit=45, p=.75),
+            A.CLAHE(),
+            A.RandomRotate90(),
+            A.Transpose(),
+            #A.RandomBrightnessContrast(),
+            #A.OpticalDistortion(),
+            #A.GridDistortion(),
+            A.Normalize(
+                #mean = mean,
+                #std = std,
+            #    max_pixel_value=255.0
+            ),
+            ToTensorV2(),
+        ]
+    )
+    valid_transform = A.Compose(
+        [
+            A.Normalize(
+                #mean = mean,
+                #std = std,
+            #    max_pixel_value=255.0
+            ),
+            ToTensorV2(),
+        ]
+    )
+    train_ds = UAVDatasetPatchesH5(h5file=h5file, fold=fold, mode="train", transform=train_transform)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True)
+    valid_ds = UAVDatasetPatchesH5(h5file=h5file, fold=fold, mode="val", transform=valid_transform)
+    valid_loader = DataLoader(valid_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=False)
+
+    return train_loader, valid_loader
 def get_loaders(train_img_dir, train_msk_dir, valid_img_dir ,valid_msk_dir, mean, std, batch_size, num_workers=4, pin_memory=True):
     train_transform = A.Compose(
         [    
@@ -84,7 +121,7 @@ def get_loaders(train_img_dir, train_msk_dir, valid_img_dir ,valid_msk_dir, mean
             A.Normalize(
                 mean = mean,
                 std = std,
-                max_pixel_value=1.0
+                max_pixel_value=255.0
             ),
             ToTensorV2(),
         ]
@@ -94,7 +131,7 @@ def get_loaders(train_img_dir, train_msk_dir, valid_img_dir ,valid_msk_dir, mean
             A.Normalize(
                 mean = mean,
                 std = std,
-                max_pixel_value=1.0
+                max_pixel_value=255.0
             ),
             ToTensorV2(),
         ]
@@ -106,7 +143,7 @@ def get_loaders(train_img_dir, train_msk_dir, valid_img_dir ,valid_msk_dir, mean
 
     return train_loader, valid_loader
     
-def set_model(architecture, encoder_name, pretrained, b_bn, b_bilinear, replace_stride_with_dilation, num_classes=3):
+def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride_with_dilation, num_classes=3):
     model_name = f"{architecture}_{encoder_name}"
     print(f"MODEL NAME: {model_name}")
     if architecture == "fcn32s":
@@ -115,8 +152,7 @@ def set_model(architecture, encoder_name, pretrained, b_bn, b_bilinear, replace_
         pretrained = pretrained, 
         replace_stride_with_dilation=replace_stride_with_dilation, 
         n_upsample=32, 
-        b_bilinear=b_bilinear,
-        b_bn=b_bn
+        b_bilinear=b_bilinear
         )
     elif architecture == "fcn16s":
         model=load_fcn_resnet(encoder_name, 
@@ -124,8 +160,7 @@ def set_model(architecture, encoder_name, pretrained, b_bn, b_bilinear, replace_
         pretrained = pretrained, 
         replace_stride_with_dilation=replace_stride_with_dilation, 
         n_upsample=16, 
-        b_bilinear=b_bilinear,
-        b_bn=b_bn
+        b_bilinear=b_bilinear
         )
     elif architecture == "fcn8s":
         model=load_fcn_resnet(encoder_name, 
@@ -133,20 +168,27 @@ def set_model(architecture, encoder_name, pretrained, b_bn, b_bilinear, replace_
         pretrained = pretrained, 
         replace_stride_with_dilation=replace_stride_with_dilation, 
         n_upsample=8, 
-        b_bilinear=b_bilinear,
-        b_bn=b_bn
+        b_bilinear=b_bilinear
         )
-    else: 
-        raise NotImplementedError(f"{architecture} not implemented")
 
-    if model_name == "fcn_resnet50":
-        model = models.segmentation.fcn_resnet50(pretrained=pretrained, num_classes=3)
+    elif architecture == "fcntv":
+        model=load_fcn_resnet(encoder_name, 
+        num_classes=num_classes, 
+        pretrained = pretrained, 
+        replace_stride_with_dilation=replace_stride_with_dilation, 
+        n_upsample=8, 
+        b_bilinear=b_bilinear
+        )
+
+
+    elif model_name == "fcn_resnet50":
+        model = models.segmentation.fcn_resnet50(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
     elif model_name == "fcn_resnet101":
-        model = models.segmentation.fcn_resnet101(pretrained=pretrained, num_classes=3)
+        model = models.segmentation.fcn_resnet101(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
     elif model_name == "deeplabv3_resnet50":
-        model = models.segmentation.deeplabv3_resnet50(pretrained=pretrained, num_classes=3)
+        model = models.segmentation.deeplabv3_resnet50(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
     elif model_name == "deeplabv3_resnet101":
-        model = models.segmentation.deeplabv3_resnet101(pretrained=pretrained, num_classes=3)
+        model = models.segmentation.deeplabv3_resnet101(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
     else:
         raise NotImplementedError("Specified Model is not defined. Currently implemented architectures are: fcn, deeplabv3. Currently implemented feature extractors: resnet50, resnet101")
     return model
@@ -156,7 +198,8 @@ def save_checkpoint(state, filename="my_ckpt.pth.tar"):
     return
 
 def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fold=None, cur_epoch=None, architecture="fcn"):
-    with tqdm(loader, unit="batch", leave=False) as tepoch:
+    with tqdm(loader, unit="batch", leave=True) as tepoch:
+        losses = []
         if fold is not None and trial_number is not None:
             tepoch.set_description(f"Training T{trial_number} F{fold} E{cur_epoch}")
         else:
@@ -165,21 +208,23 @@ def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fo
             data = data.float().to(device="cuda")
             targets = targets.long().to(device="cuda")
             # forward 
-            optimizer.zero_grad(set_to_none=True)
-            
+            optimizer.zero_grad()
             with torch.cuda.amp.autocast():
-                if architecture in ["fcn", "deeplabv3"]:
-                    predictions = model(data)["out"] #["out"] for torchvision models
-                else:
-                    predictions = model(data)
-                loss = loss_fn(predictions, targets)
-            # backward
-            
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            # update loop
-            tepoch.set_postfix(train_loss=loss.item())
+                with torch.set_grad_enabled(True):
+                    if architecture in ["fcn", "deeplabv3"]:
+                        predictions = model(data)["out"] #["out"] for torchvision models
+                    else:
+                        predictions = model(data)
+                    loss = loss_fn(predictions, targets)
+                # backward
+                
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                # update loop
+                tepoch.set_postfix(train_loss=loss.item())
+                losses.append(loss.item())
+        tepoch.set_postfix(train_loss=np.array(losses).mean())
     return loss.item()
 
 def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None, architecture = "fcn"):
