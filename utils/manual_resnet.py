@@ -1,11 +1,8 @@
 # This implementation is for Resnets without the need of the basic blocks
 # Thus is easier for re-implementation and changes
-
-from turtle import down
 import torch
 import torch.nn as nn
 from collections import OrderedDict
-from torchinfo import summary
 from torchvision._internally_replaced_utils import load_state_dict_from_url
 
 model_urls = {
@@ -47,10 +44,13 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    def __init__(self, in_ch, mid_ch, out_ch, stride=1, padding=1, dilation=1, downsample=None):
+    def __init__(self, in_ch, mid_ch, out_ch, stride=1, padding=1, dilation=1, downsample=None, replace_stride_with_dilation=False):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels=in_ch, out_channels=mid_ch, kernel_size=1, stride=1, bias=False)
         self.bn1 = nn.BatchNorm2d(mid_ch)
+        #if replace_stride_with_dilation:
+        #    self.conv2 = nn.Conv2d(in_channels=mid_ch, out_channels=mid_ch, kernel_size=3, stride=1, padding=4, dilation=4, bias=False)
+        #else:
         self.conv2 = nn.Conv2d(in_channels=mid_ch, out_channels=mid_ch, kernel_size=3, stride=stride, padding=padding, dilation=dilation, bias=False)
         self.bn2 = nn.BatchNorm2d(mid_ch)
         self.conv3 = nn.Conv2d(in_channels=mid_ch, out_channels=out_ch, kernel_size=1, stride=1, bias=False)
@@ -105,7 +105,7 @@ class ResNet18(nn.Module):
         # third basic block, here we need also a "downsample" sequential
         
         if self.replace_stride_with_dilation:
-            layers = [nn.Conv2d(in_channels=128, out_channels=256, kernel_size=1, stride=2, bias=False), 
+            layers = [nn.Conv2d(in_channels=128, out_channels=256, kernel_size=1, stride=2, dilation=4, bias=False), 
                   nn.BatchNorm2d(256)
                   ]# TODO
         else:
@@ -125,7 +125,7 @@ class ResNet18(nn.Module):
 
         # fourth basic block, here we need also a "downsample" sequential
         if self.replace_stride_with_dilation:
-            layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=2, bias=False), 
+            layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=2, dilation=4, bias=False), 
                   nn.BatchNorm2d(512)
                   ]# TODO
         else:
@@ -372,6 +372,16 @@ def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilat
         model = ResNet34(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
     elif encoder_name == "resnet50":
         model = ResNet50(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        ct=0
+        for param in model.parameters():
+            param.requires_grad = True
+
+        #for child in model.children():
+        #    ct += 1
+        #    if ct < 7:
+        #        for param in child.parameters():
+        #            param.requires_grad = False
+            
     elif encoder_name == "resnet101":
         raise NotImplementedError(f"{encoder_name} is not implemented.")
     elif encoder_name == "resnet152":
@@ -397,11 +407,15 @@ def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilat
 
 def test():
     x = torch.randn(2, 3, 512, 512).to("cuda")
+    lr = 1e-4
+
+    
     for encoder_name in ["resnet50"]:
-        rn18 = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=True).to("cuda")
-        rn18_preds = rn18(x).to('cuda')
+        model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=True).to("cuda")
+        optimizer = torch.optim.Adam(model.parameters(), lr = lr)
+        rn18_preds = model(x)["layer4"].to('cuda')
         #summary(rn18, x.shape)
-        #print(f"{encoder_name}- {rn18_preds.shape=}")
+        print(f"{encoder_name}- {rn18_preds.shape=}")
 
 if __name__ == "__main__":
     test()

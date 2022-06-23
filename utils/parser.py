@@ -22,12 +22,12 @@ def create_train_parser():
                         type=str,
                         help='String of an encoder (feature extractor), implemented: resnet18, resnet34, resnet50, resnet101')
     
-    my_parser.add_argument('--pretrained',
-                        help='Bool, if True will use a pretrained feature extractor (on ImageNet)',
+    my_parser.add_argument('--save_checkpoint',
+                        help='Bool, if True will save checkpoints of each epoch.',
                         action='store_true')
 
-    my_parser.add_argument('--b_bn',
-                        help='Bool, if True will use batch normalization in FCN decoder.',
+    my_parser.add_argument('--pretrained',
+                        help='Bool, if True will use a pretrained feature extractor (on ImageNet)',
                         action='store_true')
     
     my_parser.add_argument('--b_bilinear',

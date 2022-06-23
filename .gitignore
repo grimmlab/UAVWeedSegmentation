@@ -1,10 +1,12 @@
 # project related
 data/trainval/patches
+data/trainval/trainval.hdf5
 data/test/patches
 data/test_different_bbch/patches
 todo.md
 models/*
 check_*
+db*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
