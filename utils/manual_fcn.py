@@ -1,7 +1,9 @@
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 from .manual_resnet import load_resnet
+
 
 class FCNHead(nn.Sequential):
     def __init__(self, in_ch, out_ch):
@@ -20,20 +22,23 @@ class FCNHead(nn.Sequential):
         super().__init__(*layers)
 
 class FCNtv(nn.Module):
-
-    def __init__(self, backbone, head, num_classes=3):
+    def __init__(self, backbone, head):
         super().__init__()
+        # works only if output of encoder is dilated --> [B, C, 64, 64]
         self.encoder_name = "resnet50"
-        self.bn = nn.BatchNorm2d(num_features=num_classes)
         self.backbone = backbone
         self.head = head
+        self.b_printed =False
 
     def forward(self, x):
+        input_shape = x.shape[-2:]
+        if not self.b_printed:
+            print(f"Before Upsampling: {x.shape=}")
+            self.b_printed = True
         x = self.backbone(x)["layer4"]
         x = self.head(x)
-        x = self.bn(x)
-        # other function used here in torchvision implementation
-        x = nn.functional.interpolate(x, scale_factor=8, mode='bilinear', align_corners=False)
+        x = F.interpolate(x, size=input_shape, mode="bilinear", align_corners=False)
+        
         return x
 
 
@@ -137,7 +142,12 @@ def load_fcn_resnet(encoder_name, num_classes=3, pretrained = False, replace_str
     Constructs a Fully-Convolutional Network model with a ResNet backbone.
     """
 
-    backbone = load_resnet(encoder_name=encoder_name, num_classes=num_classes, pretrained=pretrained, replace_stride_with_dilation=replace_stride_with_dilation)
+    backbone = load_resnet(
+                encoder_name=encoder_name, 
+                num_classes=num_classes, 
+                pretrained=pretrained, 
+                replace_stride_with_dilation=replace_stride_with_dilation
+                )
     
     
     if encoder_name in ["resnet18", "resnet34"]:

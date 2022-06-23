@@ -244,8 +244,9 @@ def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None, archi
                 else:
                     predictions = model(inputs)
                 dice_loss_batch = kornia.losses.dice_loss(predictions, targets).item()
-                dice_loss +=dice_loss_batch
+                dice_loss +=dice_loss_batch # TODO: check if we can use mean for the objective function
                 tepoch.set_postfix(valid_loss=dice_loss_batch)
+        tepoch.set_postfix(valid_loss=dice_loss)
     model.train()
     return dice_loss
 

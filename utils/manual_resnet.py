@@ -44,13 +44,10 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    def __init__(self, in_ch, mid_ch, out_ch, stride=1, padding=1, dilation=1, downsample=None, replace_stride_with_dilation=False):
+    def __init__(self, in_ch, mid_ch, out_ch, stride=1, padding=1, dilation=1, downsample=None):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels=in_ch, out_channels=mid_ch, kernel_size=1, stride=1, bias=False)
         self.bn1 = nn.BatchNorm2d(mid_ch)
-        #if replace_stride_with_dilation:
-        #    self.conv2 = nn.Conv2d(in_channels=mid_ch, out_channels=mid_ch, kernel_size=3, stride=1, padding=4, dilation=4, bias=False)
-        #else:
         self.conv2 = nn.Conv2d(in_channels=mid_ch, out_channels=mid_ch, kernel_size=3, stride=stride, padding=padding, dilation=dilation, bias=False)
         self.bn2 = nn.BatchNorm2d(mid_ch)
         self.conv3 = nn.Conv2d(in_channels=mid_ch, out_channels=out_ch, kernel_size=1, stride=1, bias=False)
@@ -256,7 +253,7 @@ class ResNet34(nn.Module):
 
         return layers
 
-class ResNet50(nn.Module):
+class ResNet50_old(nn.Module):
     def __init__(self, num_classes=3, replace_stride_with_dilation=False):
         super().__init__()
         self.num_classes = num_classes
@@ -363,6 +360,240 @@ class ResNet50(nn.Module):
         layers["layer4"]=x
 
         return layers
+
+class ResNet50(nn.Module):
+    """
+    check if we can simplify the replace_stride_with_dilation if statement
+    """
+    def __init__(self, num_classes=3, replace_stride_with_dilation=False):
+        super().__init__()
+        self.num_classes = num_classes
+        self.replace_stride_with_dilation = replace_stride_with_dilation
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        #first Bottleneck block
+        layers = [nn.Conv2d(in_channels=64, out_channels=256, kernel_size=1, stride=1, bias=False), 
+                  nn.BatchNorm2d(256)
+                  ]
+        downsample = nn.Sequential(*layers)
+
+        layers = [Bottleneck(in_ch=64, mid_ch=64, out_ch=256, stride=1, downsample=downsample),
+                  Bottleneck(in_ch=256, mid_ch=64, out_ch=256, stride=1, downsample=None),
+                  Bottleneck(in_ch=256, mid_ch=64, out_ch=256, stride=1, downsample=None)
+                  ]
+        self.layer1 = nn.Sequential(*layers)
+
+
+        #second Bottleneck block
+        layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=2, bias=False), 
+                  nn.BatchNorm2d(512)
+                  ]
+        downsample = nn.Sequential(*layers)
+
+        layers = [Bottleneck(in_ch=256, mid_ch=128, out_ch=512, stride=2, downsample=downsample),
+                  Bottleneck(in_ch=512, mid_ch=128, out_ch=512, stride=1, downsample=None),
+                  Bottleneck(in_ch=512, mid_ch=128, out_ch=512, stride=1, downsample=None),
+                  Bottleneck(in_ch=512, mid_ch=128, out_ch=512, stride=1, downsample=None),
+                  ]
+        self.layer2 = nn.Sequential(*layers)
+
+        # third Bottleneck block
+        if self.replace_stride_with_dilation:
+            stride=1
+        else:
+            stride=2
+
+        layers = [nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=stride, bias=False), 
+                  nn.BatchNorm2d(1024)
+                  ]
+        
+        downsample = nn.Sequential(*layers)
+        if self.replace_stride_with_dilation:
+            strides = [1, 1, 1, 1, 1, 1]
+            paddings = [1, 2, 2, 2, 2, 2]
+            dilations = [1, 2, 2, 2, 2, 2]
+        else:
+            strides = [2, 1, 1, 1, 1, 1]
+            paddings = [1, 1, 1, 1, 1, 1]
+            dilations = [1, 1, 1, 1, 1, 1]
+
+
+        layers = [Bottleneck(in_ch=512, mid_ch=256, out_ch=1024, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[2], padding=paddings[2], dilation=dilations[2], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[3], padding=paddings[3], dilation=dilations[3], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[4], padding=paddings[4], dilation=dilations[4], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[5], padding=paddings[5], dilation=dilations[5], downsample=None),
+                  ]
+
+        self.layer3 = nn.Sequential(*layers)
+
+        # fourth Bottleneck block
+        if self.replace_stride_with_dilation:
+            stride=1
+        else:
+            stride=2
+
+        layers = [nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=1, stride=stride, bias=False), 
+                  nn.BatchNorm2d(2048)
+                  ]
+
+        downsample = nn.Sequential(*layers)
+
+        if self.replace_stride_with_dilation:
+            strides = [1, 1, 1]
+            paddings = [2, 4, 4]
+            dilations = [2, 4, 4]
+        else:
+            strides = [2, 1, 1]
+            paddings = [1, 1, 1]
+            dilations = [1, 1, 1]
+
+        layers = [Bottleneck(in_ch=1024, mid_ch=512, out_ch=2048, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
+                  Bottleneck(in_ch=2048, mid_ch=512, out_ch=2048, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
+                  Bottleneck(in_ch=2048, mid_ch=512, out_ch=2048, stride=strides[2], padding=paddings[2], dilation=dilations[2], downsample=None),
+                  ]
+
+        self.layer4 = nn.Sequential(*layers)
+
+    def forward(self, x):
+        layers = OrderedDict()
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        layers["layer1"]=x
+        x = self.layer2(x)
+        layers["layer2"]=x
+        x = self.layer3(x)
+        layers["layer3"]=x
+        x = self.layer4(x)
+        layers["layer4"]=x
+
+        return layers
+
+
+class ResNet101(nn.Module):
+    """
+    check if we can simplify the replace_stride_with_dilation if statement
+    """
+    def __init__(self, num_classes=3, replace_stride_with_dilation=False):
+        super().__init__()
+        self.num_classes = num_classes
+        self.replace_stride_with_dilation = replace_stride_with_dilation
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        
+        #first Bottleneck block
+        layers = [nn.Conv2d(in_channels=64, out_channels=256, kernel_size=1, stride=1, bias=False), 
+                  nn.BatchNorm2d(256)
+                  ]
+        downsample = nn.Sequential(*layers)
+
+        layers = [Bottleneck(in_ch=64, mid_ch=64, out_ch=256, stride=1, downsample=downsample),
+                  Bottleneck(in_ch=256, mid_ch=64, out_ch=256, stride=1, downsample=None),
+                  Bottleneck(in_ch=256, mid_ch=64, out_ch=256, stride=1, downsample=None)
+                  ]
+        self.layer1 = nn.Sequential(*layers)
+
+
+        #second Bottleneck block
+        layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=2, bias=False), 
+                  nn.BatchNorm2d(512)
+                  ]
+        downsample = nn.Sequential(*layers)
+
+        layers = [Bottleneck(in_ch=256, mid_ch=128, out_ch=512, stride=2, downsample=downsample),
+                  Bottleneck(in_ch=512, mid_ch=128, out_ch=512, stride=1, downsample=None),
+                  Bottleneck(in_ch=512, mid_ch=128, out_ch=512, stride=1, downsample=None),
+                  Bottleneck(in_ch=512, mid_ch=128, out_ch=512, stride=1, downsample=None),
+                  ]
+        self.layer2 = nn.Sequential(*layers)
+
+        # third Bottleneck block
+        if self.replace_stride_with_dilation:
+            stride=1
+        else:
+            stride=2
+
+        layers = [nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=stride, bias=False), 
+                  nn.BatchNorm2d(1024)
+                  ]
+        
+        downsample = nn.Sequential(*layers)
+        if self.replace_stride_with_dilation:
+            strides = [1, 1, 1, 1, 1, 1]
+            paddings = [1, 2, 2, 2, 2, 2]
+            dilations = [1, 2, 2, 2, 2, 2]
+        else:
+            strides = [2, 1, 1, 1, 1, 1]
+            paddings = [1, 1, 1, 1, 1, 1]
+            dilations = [1, 1, 1, 1, 1, 1]
+
+
+        layers = [Bottleneck(in_ch=512, mid_ch=256, out_ch=1024, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[2], padding=paddings[2], dilation=dilations[2], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[3], padding=paddings[3], dilation=dilations[3], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[4], padding=paddings[4], dilation=dilations[4], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[5], padding=paddings[5], dilation=dilations[5], downsample=None),
+                  ]
+
+        self.layer3 = nn.Sequential(*layers)
+
+        # fourth Bottleneck block
+        if self.replace_stride_with_dilation:
+            stride=1
+        else:
+            stride=2
+
+        layers = [nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=1, stride=stride, bias=False), 
+                  nn.BatchNorm2d(2048)
+                  ]
+
+        downsample = nn.Sequential(*layers)
+
+        if self.replace_stride_with_dilation:
+            strides = [1, 1, 1]
+            paddings = [2, 4, 4]
+            dilations = [2, 4, 4]
+        else:
+            strides = [2, 1, 1]
+            paddings = [1, 1, 1]
+            dilations = [1, 1, 1]
+
+        layers = [Bottleneck(in_ch=1024, mid_ch=512, out_ch=2048, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
+                  Bottleneck(in_ch=2048, mid_ch=512, out_ch=2048, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
+                  Bottleneck(in_ch=2048, mid_ch=512, out_ch=2048, stride=strides[2], padding=paddings[2], dilation=dilations[2], downsample=None),
+                  ]
+
+        self.layer4 = nn.Sequential(*layers)
+
+    def forward(self, x):
+        layers = OrderedDict()
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        layers["layer1"]=x
+        x = self.layer2(x)
+        layers["layer2"]=x
+        x = self.layer3(x)
+        layers["layer3"]=x
+        x = self.layer4(x)
+        layers["layer4"]=x
+
+        return layers
+
 
 
 def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilation, progress=True):
