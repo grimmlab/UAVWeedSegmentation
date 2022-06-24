@@ -7,6 +7,7 @@ todo.md
 models/*
 check_*
 db*
+save_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
