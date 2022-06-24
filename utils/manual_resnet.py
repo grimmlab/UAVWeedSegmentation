@@ -533,9 +533,9 @@ class ResNet101(nn.Module):
             paddings = [1, 2, 2, 2, 2, 2]
             dilations = [1, 2, 2, 2, 2, 2]
         else:
-            strides = [2, 1, 1, 1, 1, 1]
-            paddings = [1, 1, 1, 1, 1, 1]
-            dilations = [1, 1, 1, 1, 1, 1]
+            strides = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            paddings = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            dilations = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 
         layers = [Bottleneck(in_ch=512, mid_ch=256, out_ch=1024, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
@@ -544,6 +544,23 @@ class ResNet101(nn.Module):
                   Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[3], padding=paddings[3], dilation=dilations[3], downsample=None),
                   Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[4], padding=paddings[4], dilation=dilations[4], downsample=None),
                   Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[5], padding=paddings[5], dilation=dilations[5], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[6], padding=paddings[6], dilation=dilations[6], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[7], padding=paddings[7], dilation=dilations[7], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[8], padding=paddings[8], dilation=dilations[8], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[9], padding=paddings[9], dilation=dilations[9], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[10], padding=paddings[10], dilation=dilations[10], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[11], padding=paddings[11], dilation=dilations[11], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[12], padding=paddings[12], dilation=dilations[12], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[13], padding=paddings[13], dilation=dilations[13], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[14], padding=paddings[14], dilation=dilations[14], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[15], padding=paddings[15], dilation=dilations[15], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[16], padding=paddings[16], dilation=dilations[16], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[17], padding=paddings[17], dilation=dilations[17], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[18], padding=paddings[18], dilation=dilations[18], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[19], padding=paddings[19], dilation=dilations[19], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[20], padding=paddings[20], dilation=dilations[20], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[21], padding=paddings[21], dilation=dilations[21], downsample=None),
+                  Bottleneck(in_ch=1024, mid_ch=256, out_ch=1024, stride=strides[22], padding=paddings[22], dilation=dilations[22], downsample=None),
                   ]
 
         self.layer3 = nn.Sequential(*layers)
@@ -614,7 +631,9 @@ def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilat
         #            param.requires_grad = False
             
     elif encoder_name == "resnet101":
-        raise NotImplementedError(f"{encoder_name} is not implemented.")
+        model = ResNet101(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        for param in model.parameters():
+            param.requires_grad = True
     elif encoder_name == "resnet152":
         raise NotImplementedError(f"{encoder_name} is not implemented.")
     else:

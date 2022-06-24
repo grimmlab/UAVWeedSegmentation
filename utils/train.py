@@ -147,13 +147,23 @@ def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride
     model_name = f"{architecture}_{encoder_name}"
     print(f"MODEL NAME: {model_name}")
     if architecture == "fcn32s":
-        model=load_fcn_resnet(encoder_name, 
-        num_classes=num_classes, 
-        pretrained = pretrained, 
-        replace_stride_with_dilation=replace_stride_with_dilation, 
-        n_upsample=32, 
-        b_bilinear=b_bilinear
-        )
+        if replace_stride_with_dilation:
+            model=load_fcn_resnet(encoder_name, 
+            num_classes=num_classes, 
+            pretrained = pretrained, 
+            replace_stride_with_dilation=replace_stride_with_dilation, 
+            n_upsample=8, 
+            b_bilinear=b_bilinear
+            )
+        else:
+            model=load_fcn_resnet(encoder_name, 
+            num_classes=num_classes, 
+            pretrained = pretrained, 
+            replace_stride_with_dilation=replace_stride_with_dilation, 
+            n_upsample=32, 
+            b_bilinear=b_bilinear
+            )
+
     elif architecture == "fcn16s":
         model=load_fcn_resnet(encoder_name, 
         num_classes=num_classes, 

@@ -35,14 +35,6 @@ def objective(trial):
         valid_msk_dir = [msk_list[i] for i in val_ids]
         epochs_no_improve = 0
 
-        print("-----BEGIN SETUP-----")
-        print(f"seed: {seed}")
-        print(f"architecture: {architecture}")
-        print(f"encoder_name: {encoder_name}")
-        print(f"batch size: {batch_size}")
-        print(f"n_trials: {n_trials}")
-        print("-----END SETUP-----")
-
         model = set_model(architecture=architecture, encoder_name=encoder_name, pretrained=pretrained, b_bilinear=b_bilinear, replace_stride_with_dilation=replace_stride_with_dilation, num_classes=3).to(device=device)
         
         loss_fn = kornia.losses.DiceLoss()
@@ -62,7 +54,7 @@ def objective(trial):
             std = stds,
             batch_size = args.batch_size,
             num_workers = num_workers,
-            pin_memory = True,
+            pin_memory = False,
         )
         scaler = torch.cuda.amp.GradScaler()
         for epoch in range(max_epochs):
@@ -124,7 +116,7 @@ def objective(trial):
 
 if __name__ == "__main__":
     args = create_train_parser()
-
+    run_prefix:str = args.run_prefix
     b_clean_study:bool = args.b_clean_study
     b_save_checkpoint:bool = args.save_checkpoint
     pretrained:bool = args.pretrained
@@ -135,7 +127,7 @@ if __name__ == "__main__":
     lr_ranges = [args.lr_min, args.lr_max]
 
     if args.db_name == "":
-        db_name:str = f"db_{architecture}_{encoder_name}_dil{int(replace_stride_with_dilation)}_bilin{int(b_bilinear)}_pre{int(pretrained)}"
+        db_name:str = f"{run_prefix}_{architecture}_{encoder_name}_dil{int(replace_stride_with_dilation)}_bilin{int(b_bilinear)}_pre{int(pretrained)}"
     else:
         db_name = args.db_name
     if args.study_name == "":
@@ -155,7 +147,7 @@ if __name__ == "__main__":
     seed:int = args.seed
 
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    num_workers: int = 4
+    num_workers: int = 2
 
     seed_all(seed=seed)
 

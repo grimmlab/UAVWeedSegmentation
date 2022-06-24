@@ -22,6 +22,10 @@ def create_train_parser():
                         type=str,
                         help='String of an encoder (feature extractor), implemented: resnet18, resnet34, resnet50, resnet101')
     
+    my_parser.add_argument('--run_prefix',
+                        type=str,
+                        help='Prefix for the optuna database', default="db")
+    
     my_parser.add_argument('--save_checkpoint',
                         help='Bool, if True will save checkpoints of each epoch.',
                         action='store_true')

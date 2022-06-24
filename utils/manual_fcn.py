@@ -1,4 +1,5 @@
 
+from json import encoder
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -22,43 +23,53 @@ class FCNHead(nn.Sequential):
         super().__init__(*layers)
 
 class FCNtv(nn.Module):
-    def __init__(self, backbone, head):
+    """
+    FCN network without skip connections. 
+    If there is no dilation in the backbone, the model will be equal to FCN32s.
+    The interpolation will make [B, C, 16, 16] --> [B, C, 256, 256]
+    If a dilation of x4 is used in the backbone, 
+    then the model will be equal to FCN8s 
+    without any skip connections between intermediate layers
+    The interpolation will make [B, C, 64, 64] --> [B, C, 256, 256]
+    Currently implemented is only bilinear interpolation. 
+    TODO: add transposeConv upsampling here
+    """
+    def __init__(self, encoder_name, backbone, head, num_classes=3, n_upsample=32, b_bilinear=True, replace_stride_with_dilation=False):
         super().__init__()
-        # works only if output of encoder is dilated --> [B, C, 64, 64]
         self.encoder_name = "resnet50"
         self.backbone = backbone
         self.head = head
-        self.b_printed =False
+        print(f"using test {encoder_name}, {n_upsample}x upsampling with replace strides {replace_stride_with_dilation} and bilinear {b_bilinear}")
+
 
     def forward(self, x):
         input_shape = x.shape[-2:]
-        if not self.b_printed:
-            print(f"Before Upsampling: {x.shape=}")
-            self.b_printed = True
         x = self.backbone(x)["layer4"]
         x = self.head(x)
+
         x = F.interpolate(x, size=input_shape, mode="bilinear", align_corners=False)
-        
+
         return x
 
 
-class FCN(nn.Module):
+class FCNskip(nn.Module):
 
-    def __init__(self, encoder_name, backbone, head, num_classes=3, n_upsample=32, b_bilinear=True, replace_stride_with_dilation=False, b_bn=False):
+    def __init__(self, encoder_name, backbone, head, num_classes=3, n_upsample=32, b_bilinear=True, replace_stride_with_dilation=False):
+        # TODO: init deconv as bilinear
         super().__init__()
         self.n_upsample = n_upsample
         self.encoder_name = encoder_name
         self.replace_stride_with_dilation = replace_stride_with_dilation
         self.b_bilinear=b_bilinear
-        self.b_bn = b_bn
+        print(f"using {encoder_name}, {n_upsample}x upsampling with replace strides {replace_stride_with_dilation} and bilinear {b_bilinear}")
+
         self.bn = nn.BatchNorm2d(num_features=num_classes)
         self.onebyone128 = nn.Conv2d(128, num_classes, kernel_size=1)
         self.onebyone256 = nn.Conv2d(256, num_classes, kernel_size=1)
         self.onebyone512 = nn.Conv2d(512, num_classes, kernel_size=1)
         self.onebyone1024 = nn.Conv2d(1024, num_classes, kernel_size=1)
         if not b_bilinear:
-            self.convTranspose = nn.ConvTranspose2d(in_channels=num_classes, out_channels=num_classes, kernel_size=4, stride=2, bias=False)
-        
+            self.convTranspose = nn.ConvTranspose2d(in_channels=num_classes, out_channels=num_classes, kernel_size=4, stride=2, padding=1, bias=False)
         self.backbone = backbone
 
 
@@ -67,14 +78,10 @@ class FCN(nn.Module):
     def forward(self, x):
         input_shape = x.shape[-2:]
         x = self.backbone(x)
+
         layer4 = self.head(x["layer4"])
-        if self.n_upsample == 32: # use FCN-32s model
-            #if self.b_bilinear:
-            x = nn.functional.interpolate(layer4, scale_factor=self.n_upsample, mode='bilinear', align_corners=None)
-            #else:
-            #    x = self.convTranspose(layer4)
-        
-        elif self.n_upsample == 16: # use FCN-16s model
+
+        if self.n_upsample == 16: # use FCN-16s model
             # upsampling needs to be based on the num_classes feature maps
 
             # get intermediate layer and match channels
@@ -84,50 +91,44 @@ class FCN(nn.Module):
                 layer3 = self.onebyone1024(x["layer3"])
             # upsample last layer 2x to match spatial resolution
             if self.b_bilinear:
-                x = nn.functional.interpolate(layer4, scale_factor=2, mode='bilinear', align_corners=None)
+                x = F.interpolate(layer4, scale_factor=2.0, mode="bilinear", align_corners=False)
             else:
                 x = self.convTranspose(layer4)
             # concat both
-            if self.b_bn:
-                print("using batch norm")
-                x = self.bn(x + layer3)
-            else:
-                x = x+layer3
-                
-            x = nn.functional.interpolate(x, scale_factor=self.n_upsample, mode='bilinear', align_corners=None)
+            x = self.bn(x + layer3)
+            # final upsampling: here x16. This was fixed in the original paper
 
+            x = F.interpolate(x, size=input_shape, mode="bilinear", align_corners=False)
         elif self.n_upsample == 8: # use FCN-8s model
-            
-            if self.replace_stride_with_dilation: # if dilation is used, the output shape is x4 --> no skip connections needed
-                x = nn.functional.interpolate(layer4, scale_factor=self.n_upsample, mode='bilinear', align_corners=None)
+
+            # upsampling needs to be based on the num_classes feature maps
+
+            # get intermediate layer and match channels
+            if self.encoder_name in ["resnet18", "resnet34"]:
+                layer3 = self.onebyone256(x["layer3"])
+                layer2 = self.onebyone128(x["layer2"])
             else:
-                # upsampling needs to be based on the num_classes feature maps
+                layer3 = self.onebyone1024(x["layer3"])
+                layer2 = self.onebyone512(x["layer2"])
+            # upsample layer4 2x to match spatial resolution of layer3
+            if self.b_bilinear:
+                layer4 = F.interpolate(layer4, scale_factor=2.0, mode="bilinear", align_corners=False)
+            else:
+                layer4 = self.convTranspose(layer4)
+            
+            # concat both
+            x = self.bn(layer3 + layer4)
+            # upsample result of layer4 + 3 to match spatial resolution of layer2
+            
+            if self.b_bilinear:
+                x = F.interpolate(x, scale_factor=2.0, mode="bilinear", align_corners=False)
+            else:
+                x = self.convTranspose(x)
+            x = self.bn(x + layer2)
+            # final upsampling: here x8. This was fixed in the original paper
+            x = F.interpolate(x, size=input_shape, mode="bilinear", align_corners=False)
 
-                # get intermediate layer and match channels
-                if self.encoder_name in ["resnet18", "resnet34"]:
-                    layer3 = self.onebyone256(x["layer3"])
-                    layer2 = self.onebyone128(x["layer2"])
-                else:
-                    layer3 = self.onebyone1024(x["layer3"])
-                    layer2 = self.onebyone512(x["layer2"])
-                # upsample last layer 2x to match spatial resolution
-                #layer3 = self.upsample2(layer3) # here bug in train code but not in test down here. changed to interpolate, as upsample is depecated
-                layer3 = nn.functional.interpolate(layer3, scale_factor=2, mode='bilinear', align_corners=None)
-                layer4 = nn.functional.interpolate(layer4, scale_factor=4, mode='bilinear', align_corners=None)
-
-                # concat both
-                if self.b_bn:
-                    x = self.bn(layer2 + layer3)
-                    x = self.bn(x + layer4)
-                else:
-                    x = layer2 + layer3
-                    x = x + layer4
-
-                # final upsampling: here x8
-                x = nn.functional.interpolate(x, scale_factor=self.n_upsample, mode='bilinear', align_corners=None)
-
-
-                # TODO: init deconv as bilinear
+                
 
         else: 
             raise NotImplementedError(f"Upsampling of {self.n_upsample} is not implemented. Use either, 8, 16 or 32")
@@ -142,19 +143,37 @@ def load_fcn_resnet(encoder_name, num_classes=3, pretrained = False, replace_str
     Constructs a Fully-Convolutional Network model with a ResNet backbone.
     """
 
-    backbone = load_resnet(
-                encoder_name=encoder_name, 
-                num_classes=num_classes, 
-                pretrained=pretrained, 
-                replace_stride_with_dilation=replace_stride_with_dilation
-                )
-    
-    
     if encoder_name in ["resnet18", "resnet34"]:
         head = FCNHead(512, num_classes)
     else:
         head = FCNHead(2048, num_classes)
-        fcn = FCNtv(backbone, head)
+
+    if replace_stride_with_dilation:
+        backbone = load_resnet(
+            encoder_name=encoder_name, 
+            num_classes=num_classes, 
+            pretrained=pretrained, 
+            replace_stride_with_dilation=True
+            )
+        # set n_upsample =8, if we use dilated convolutions in the feature extractor --> no skip connections needed
+        if n_upsample == 8:
+            fcn = FCNtv(encoder_name, backbone, head, num_classes=num_classes, n_upsample=n_upsample, b_bilinear=b_bilinear, replace_stride_with_dilation=True)
+        else:
+            raise NotImplementedError(f"upsampling of {n_upsample} not implemented when using dilation instead of stride")
+    else:
+        backbone = load_resnet(
+            encoder_name=encoder_name, 
+            num_classes=num_classes, 
+            pretrained=pretrained, 
+            replace_stride_with_dilation=False
+            )
+        if n_upsample in [8, 16]:
+            fcn = FCNskip(encoder_name, backbone, head, num_classes=num_classes, n_upsample=n_upsample, b_bilinear=b_bilinear, replace_stride_with_dilation=False)
+        elif n_upsample == 32:
+            fcn = FCNtv(encoder_name, backbone, head, num_classes=num_classes, n_upsample=n_upsample, b_bilinear=b_bilinear, replace_stride_with_dilation=False)
+        else:
+            raise NotImplementedError(f"upsampling of {n_upsample} not implemented when not using dilation")
+
         # TODO: make it work with other models than resnet50 
     #if replace_stride_with_dilation == True:
 

@@ -14,7 +14,6 @@ class UAVDatasetPatches(Dataset):
         self.img_list= img_list
         self.msk_list= msk_list
         assert len(self.img_list) == len(self.msk_list), "Image and Mask Patches have different lengths."
-        print(f"Found {len(self.img_list)} image patches")
     def __len__(self):
         return len(self.img_list)
 
