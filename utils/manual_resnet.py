@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 from collections import OrderedDict
+from torchinfo import summary
 from torchvision._internally_replaced_utils import load_state_dict_from_url
 
 model_urls = {
@@ -154,8 +155,8 @@ class ResNet18(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
+        layers["layer0"]=x
         x = self.maxpool(x)
-
         x = self.layer1(x)
         layers["layer1"]=x
         x = self.layer2(x)
@@ -253,8 +254,8 @@ class ResNet34(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
+        layers["layer0"]=x
         x = self.maxpool(x)
-
         x = self.layer1(x)
         layers["layer1"]=x
         x = self.layer2(x)
@@ -370,8 +371,8 @@ class ResNet50(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
+        layers["layer0"]=x
         x = self.maxpool(x)
-
         x = self.layer1(x)
         layers["layer1"]=x
         x = self.layer2(x)
@@ -504,8 +505,8 @@ class ResNet101(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
+        layers["layer0"]=x
         x = self.maxpool(x)
-
         x = self.layer1(x)
         layers["layer1"]=x
         x = self.layer2(x)
@@ -562,15 +563,11 @@ def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilat
 
 
 def test():
-    x = torch.randn(2, 3, 512, 512).to("cuda")
-    lr = 1e-4
-
-    
-    for encoder_name in ["resnet50"]:
+    x = torch.randn(20, 3, 256, 256).to("cuda")
+    for encoder_name in ["resnet34"]:
         model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=True).to("cuda")
-        optimizer = torch.optim.Adam(model.parameters(), lr = lr)
         rn18_preds = model(x)["layer4"].to('cuda')
-        #summary(rn18, x.shape)
+        summary(model, x.shape)
         print(f"{encoder_name}- {rn18_preds.shape=}")
 
 if __name__ == "__main__":

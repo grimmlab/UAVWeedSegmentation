@@ -10,6 +10,9 @@ import optuna
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from utils.manual_fcn import load_fcn_resnet
+from utils.manual_unet import load_unet_resnet
+import segmentation_models_pytorch as smp
+
 
 def get_calculated_means_stds_per_fold(fold):
     means = [
@@ -169,7 +172,18 @@ def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride
         n_upsample=8, 
         b_bilinear=b_bilinear
         )
-
+    elif architecture == "unetown":
+        model = load_unet_resnet(
+            encoder_name=encoder_name,
+            num_classes=3,                      
+        )
+    elif architecture == "unetsmp":
+        model = smp.Unet(
+            encoder_name=encoder_name,
+            encoder_weights="imagenet",
+            in_channels=3,                  
+            classes=3,                      
+        )
     else:
         raise NotImplementedError("Specified Model is not defined. Currently implemented architectures are: fcn, deeplabv3. Currently implemented feature extractors: resnet50, resnet101")
     return model
