@@ -67,7 +67,6 @@ def objective(trial):
                 cur_epoch=epoch,
                 trial_number=trial.number,
                 fold=fold,
-                architecture=architecture
                 )
             checkpoint = {
                 "state_dict": model.state_dict(),
@@ -80,7 +79,6 @@ def objective(trial):
                 cur_epoch=epoch, 
                 trial_number=trial.number,
                 fold=fold,
-                architecture=architecture
                 )
             scheduler.step(valid_loss)
             

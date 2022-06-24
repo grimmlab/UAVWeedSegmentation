@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -12,7 +13,7 @@ from albumentations.pytorch import ToTensorV2
 from utils.manual_fcn import load_fcn_resnet
 from utils.manual_unet import load_unet_resnet
 import segmentation_models_pytorch as smp
-
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 def get_calculated_means_stds_per_fold(fold):
     means = [
@@ -175,7 +176,8 @@ def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride
     elif architecture == "unetown":
         model = load_unet_resnet(
             encoder_name=encoder_name,
-            num_classes=3,                      
+            num_classes=3,
+            pretrained=pretrained,                    
         )
     elif architecture == "unetsmp":
         model = smp.Unet(
@@ -193,7 +195,7 @@ def save_checkpoint(state, filename="my_ckpt.pth.tar"):
     return
 
 def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fold=None, cur_epoch=None):
-    with tqdm(loader, unit="batch", leave=False) as tepoch:
+    with tqdm(loader, unit="batch", leave=True) as tepoch:
         losses = []
         if fold is not None and trial_number is not None:
             tepoch.set_description(f"Training T{trial_number} F{fold} E{cur_epoch}")
@@ -216,11 +218,13 @@ def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fo
                 # update loop
                 tepoch.set_postfix(train_loss=loss.item())
                 losses.append(loss.item())
-        tepoch.set_postfix(train_loss=np.array(losses).mean())
+            tepoch.set_postfix(train_losses=np.array(losses).mean())
     return loss.item()
 
 def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None):
     dice_loss = 0
+    predictions_whole = None 
+    targets_whole = None 
     model.eval()
     with torch.no_grad():
         with tqdm(loader, unit="batch", leave=False) as tepoch:
@@ -232,10 +236,18 @@ def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None):
                 inputs = inputs.float().to(device="cuda")
                 targets = targets.long().to(device="cuda")
                 predictions = model(inputs)
-                dice_loss_batch = kornia.losses.dice_loss(predictions, targets).item()
-                dice_loss +=dice_loss_batch # TODO: check if we can use mean for the objective function
-                tepoch.set_postfix(valid_loss=dice_loss_batch)
-        tepoch.set_postfix(valid_loss=dice_loss)
+                if predictions_whole is None:
+                    predictions_whole = predictions
+                else:
+                    predictions_whole = torch.cat((predictions_whole, predictions), dim=0)
+                if targets_whole is None:
+                    targets_whole = targets
+                else:
+                    targets_whole = torch.cat((targets_whole, targets), dim=0)
+                
+                
+            dice_loss = kornia.losses.dice_loss(predictions_whole, targets_whole).item()
+    logging.info(f"valid loss {dice_loss}")
     model.train()
     return dice_loss
 
