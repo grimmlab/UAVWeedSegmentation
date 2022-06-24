@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import torchvision.models as models
 from tqdm import tqdm
 import kornia
 from utils.dataset import UAVDatasetPatches, UAVDatasetPatchesH5
@@ -73,14 +72,9 @@ def get_loadersh5(h5file, fold, mean, std, batch_size, num_workers=4, pin_memory
         [    
             A.HorizontalFlip(),
             A.VerticalFlip(),
-            #A.MotionBlur(),
-            #A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.50, rotate_limit=45, p=.75),
             A.CLAHE(),
             A.RandomRotate90(),
             A.Transpose(),
-            #A.RandomBrightnessContrast(),
-            #A.OpticalDistortion(),
-            #A.GridDistortion(),
             A.Normalize(
                 #mean = mean,
                 #std = std,
@@ -103,21 +97,16 @@ def get_loadersh5(h5file, fold, mean, std, batch_size, num_workers=4, pin_memory
     train_loader = DataLoader(train_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True)
     valid_ds = UAVDatasetPatchesH5(h5file=h5file, fold=fold, mode="val", transform=valid_transform)
     valid_loader = DataLoader(valid_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=False)
-
     return train_loader, valid_loader
+
 def get_loaders(train_img_dir, train_msk_dir, valid_img_dir ,valid_msk_dir, mean, std, batch_size, num_workers=4, pin_memory=True):
     train_transform = A.Compose(
         [    
             A.HorizontalFlip(),
             A.VerticalFlip(),
-            #A.MotionBlur(),
-            #A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.50, rotate_limit=45, p=.75),
             A.CLAHE(),
             A.RandomRotate90(),
             A.Transpose(),
-            #A.RandomBrightnessContrast(),
-            #A.OpticalDistortion(),
-            #A.GridDistortion(),
             A.Normalize(
                 mean = mean,
                 std = std,
@@ -181,24 +170,6 @@ def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride
         b_bilinear=b_bilinear
         )
 
-    elif architecture == "fcntv":
-        model=load_fcn_resnet(encoder_name, 
-        num_classes=num_classes, 
-        pretrained = pretrained, 
-        replace_stride_with_dilation=replace_stride_with_dilation, 
-        n_upsample=8, 
-        b_bilinear=b_bilinear
-        )
-
-
-    elif model_name == "fcn_resnet50":
-        model = models.segmentation.fcn_resnet50(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
-    elif model_name == "fcn_resnet101":
-        model = models.segmentation.fcn_resnet101(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
-    elif model_name == "deeplabv3_resnet50":
-        model = models.segmentation.deeplabv3_resnet50(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
-    elif model_name == "deeplabv3_resnet101":
-        model = models.segmentation.deeplabv3_resnet101(pretrained_backbone=pretrained, pretrained=False, num_classes=3)
     else:
         raise NotImplementedError("Specified Model is not defined. Currently implemented architectures are: fcn, deeplabv3. Currently implemented feature extractors: resnet50, resnet101")
     return model
@@ -207,8 +178,8 @@ def save_checkpoint(state, filename="my_ckpt.pth.tar"):
     torch.save(state, filename)
     return
 
-def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fold=None, cur_epoch=None, architecture="fcn"):
-    with tqdm(loader, unit="batch", leave=True) as tepoch:
+def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fold=None, cur_epoch=None):
+    with tqdm(loader, unit="batch", leave=False) as tepoch:
         losses = []
         if fold is not None and trial_number is not None:
             tepoch.set_description(f"Training T{trial_number} F{fold} E{cur_epoch}")
@@ -221,10 +192,7 @@ def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fo
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
                 with torch.set_grad_enabled(True):
-                    if architecture in ["fcn", "deeplabv3"]:
-                        predictions = model(data)["out"] #["out"] for torchvision models
-                    else:
-                        predictions = model(data)
+                    predictions = model(data)
                     loss = loss_fn(predictions, targets)
                 # backward
                 
@@ -237,11 +205,11 @@ def train_epoch(loader, model, optimizer, loss_fn, scaler, trial_number=None, fo
         tepoch.set_postfix(train_loss=np.array(losses).mean())
     return loss.item()
 
-def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None, architecture = "fcn"):
+def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None):
     dice_loss = 0
     model.eval()
     with torch.no_grad():
-        with tqdm(loader, unit="batch", leave=True) as tepoch:
+        with tqdm(loader, unit="batch", leave=False) as tepoch:
             if fold is not None and trial_number is not None:
                 tepoch.set_description(f"Validating T{trial_number} F{fold} E{cur_epoch}")
             else:
@@ -249,10 +217,7 @@ def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None, archi
             for idx, (inputs, targets) in enumerate(tepoch):
                 inputs = inputs.float().to(device="cuda")
                 targets = targets.long().to(device="cuda")
-                if architecture in ["fcn", "deeplabv3"]:
-                    predictions = model(inputs)["out"]
-                else:
-                    predictions = model(inputs)
+                predictions = model(inputs)
                 dice_loss_batch = kornia.losses.dice_loss(predictions, targets).item()
                 dice_loss +=dice_loss_batch # TODO: check if we can use mean for the objective function
                 tepoch.set_postfix(valid_loss=dice_loss_batch)
