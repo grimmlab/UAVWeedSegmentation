@@ -249,7 +249,7 @@ def validate_epoch(loader, model, cur_epoch, fold=None, trial_number=None):
                 
                 
             dice_loss = kornia.losses.dice_loss(predictions_whole, targets_whole).item()
-    logging.info(f"valid loss {dice_loss}")
+    logging.info(f"Validating T{trial_number} F{fold} E{cur_epoch}: valid loss {dice_loss}")
     model.train()
     return dice_loss
 
