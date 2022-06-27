@@ -11,8 +11,10 @@ import optuna
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from utils.manual_fcn import load_fcn_resnet
-from utils.manual_unet import load_unet_resnet
 import segmentation_models_pytorch as smp
+from utils.manual_unet import UNet
+from utils.manual_dlplus import DLv3plus
+
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 def get_calculated_means_stds_per_fold(fold):
@@ -173,14 +175,14 @@ def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride
         n_upsample=8, 
         b_bilinear=b_bilinear
         )
-    elif architecture == "unetown":
-        model = load_unet_resnet(
-            encoder_name=encoder_name,
-            num_classes=3,
-            pretrained=pretrained,                    
-        )
-    elif architecture == "unetsmp":
-        model = smp.Unet(
+    elif architecture == "unet":
+        model = UNet(encoder_name=encoder_name)
+    
+    elif architecture == "dlown":
+        model = DLv3plus(encoder_name=encoder_name)
+
+    elif architecture == "dlsmp":
+        model = smp.DeepLabV3Plus(
             encoder_name=encoder_name,
             encoder_weights="imagenet",
             in_channels=3,                  

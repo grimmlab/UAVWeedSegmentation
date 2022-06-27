@@ -523,6 +523,8 @@ class ResNet101(nn.Module):
 def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilation, progress=True):
     if encoder_name == "resnet18":
         model = ResNet18(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        for param in model.parameters():
+            param.requires_grad = True
     elif encoder_name == "resnet34":
         model = ResNet34(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
     elif encoder_name == "resnet50":
