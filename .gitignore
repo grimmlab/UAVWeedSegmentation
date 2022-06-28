@@ -144,3 +144,5 @@ results/save_fcn16s_resnet50_dil0_bilin1_pre1.db
 results/save_fcntv_resnet50_dil0_bilin1_pre1.db
 train_script_gpu1.sh
 train_script_unet.sh
+train_script_fcn_dilation.sh
+train_script_unet.sh
