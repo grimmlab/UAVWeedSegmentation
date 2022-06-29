@@ -14,6 +14,15 @@ model_urls = {
     'resnet152': 'https://download.pytorch.org/models/resnet152-394f9c45.pth',
     }
 
+def replace_strides_with_dilation(module, dilation_rate):
+    """Patch Conv2d modules replacing strides with dilation"""
+    for mod in module.modules():
+        if isinstance(mod, nn.Conv2d):
+            mod.stride = (1, 1)
+            mod.dilation = (dilation_rate, dilation_rate)
+            kh, _ = mod.kernel_size
+            mod.padding = ((kh // 2) * dilation_rate, (kh // 2) * dilation_rate)
+
 class BasicBlock(nn.Module):
     def __init__(self, in_ch, out_ch, stride=1, padding=1, dilation=1, downsample=None):
         super().__init__()
@@ -76,10 +85,9 @@ class Bottleneck(nn.Module):
         return out
 
 class ResNet18(nn.Module):
-    def __init__(self, num_classes=3, replace_stride_with_dilation=False):
+    def __init__(self, num_classes=3, output_stride=32):
         super().__init__()
         self.num_classes = num_classes
-        self.replace_stride_with_dilation = replace_stride_with_dilation
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -101,25 +109,15 @@ class ResNet18(nn.Module):
         self.layer2 = nn.Sequential(*layers)
 
         # third basic block, here we need also a "downsample" sequential
-        
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
 
-        layers = [nn.Conv2d(in_channels=128, out_channels=256, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=128, out_channels=256, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(256)
                   ]
 
         downsample = nn.Sequential(*layers)
-        if self.replace_stride_with_dilation:
-            strides = [1, 1]
-            paddings = [1, 2]
-            dilations = [1, 2]
-        else:
-            strides = [2, 1]
-            paddings = [1, 1]
-            dilations = [1, 1]
+        strides = [2, 1]
+        paddings = [1, 1]
+        dilations = [1, 1]
 
         layers = [BasicBlock(in_ch=128, out_ch=256, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
                   BasicBlock(in_ch=256, out_ch=256, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None)]
@@ -127,28 +125,20 @@ class ResNet18(nn.Module):
         self.layer3 = nn.Sequential(*layers)
 
         # fourth basic block, here we need also a "downsample" sequential
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
-
-        layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(512)
                   ]
         downsample = nn.Sequential(*layers)
-        if self.replace_stride_with_dilation:
-            strides = [1, 1]
-            paddings = [1, 2]
-            dilations = [1, 2]
-        else:
-            strides = [2, 1]
-            paddings = [1, 1]
-            dilations = [1, 1]
+        strides = [2, 1]
+        paddings = [1, 1]
+        dilations = [1, 1]
 
         layers = [BasicBlock(in_ch=256, out_ch=512, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
                   BasicBlock(in_ch=512, out_ch=512, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None)]
 
         self.layer4 = nn.Sequential(*layers)
+        if output_stride !=32:
+            self.make_dilated(output_stride=output_stride)
 
     def forward(self, x):
         layers = OrderedDict()
@@ -168,11 +158,40 @@ class ResNet18(nn.Module):
 
         return layers
 
+    def get_stages(self):
+        return [
+            nn.Identity(),
+            nn.Sequential(self.conv1, self.bn1, self.relu),
+            nn.Sequential(self.maxpool, self.layer1),
+            self.layer2,
+            self.layer3,
+            self.layer4,
+        ]
+    
+    def make_dilated(self, output_stride):
+        print(f"making dilated model")
+        if output_stride == 16:
+            stage_list=[5,]
+            dilation_list=[2,]
+            
+        elif output_stride == 8:
+            stage_list=[4, 5]
+            dilation_list=[2, 4] 
+
+        else:
+            raise ValueError("Output stride should be 16 or 8, got {}.".format(output_stride))
+        
+        stages = self.get_stages()
+        for stage_indx, dilation_rate in zip(stage_list, dilation_list):
+            replace_strides_with_dilation(
+                module=stages[stage_indx],
+                dilation_rate=dilation_rate,
+            )
+
 class ResNet34(nn.Module):
-    def __init__(self, num_classes=3, replace_stride_with_dilation=False):
+    def __init__(self, num_classes=3, output_stride=32):
         super().__init__()
         self.num_classes = num_classes
-        self.replace_stride_with_dilation = replace_stride_with_dilation
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -197,23 +216,14 @@ class ResNet34(nn.Module):
         self.layer2 = nn.Sequential(*layers)
 
         # third basic block, here we need also a "downsample" sequential
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
-        layers = [nn.Conv2d(in_channels=128, out_channels=256, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=128, out_channels=256, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(256)
                   ]
         downsample = nn.Sequential(*layers)
         
-        if self.replace_stride_with_dilation:
-            strides = [1, 1, 1, 1, 1, 1]
-            paddings = [1, 2, 2, 2, 2, 2]
-            dilations = [1, 2, 2, 2, 2, 2]
-        else:
-            strides = [2, 1, 1, 1, 1, 1]
-            paddings = [1, 1, 1, 1, 1, 1]
-            dilations = [1, 1, 1, 1, 1, 1]
+        strides = [2, 1, 1, 1, 1, 1]
+        paddings = [1, 1, 1, 1, 1, 1]
+        dilations = [1, 1, 1, 1, 1, 1]
 
         layers = [BasicBlock(in_ch=128, out_ch=256, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
                   BasicBlock(in_ch=256, out_ch=256, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
@@ -225,29 +235,23 @@ class ResNet34(nn.Module):
         self.layer3 = nn.Sequential(*layers)
 
         # fourth basic block, here we need also a "downsample" sequential
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
-        layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(512)
                   ]
         downsample = nn.Sequential(*layers)
         
-        if self.replace_stride_with_dilation:
-            strides = [1, 1, 1]
-            paddings = [1, 2, 2]
-            dilations = [1, 2, 2]
-        else:
-            strides = [2, 1, 1]
-            paddings = [1, 1, 1]
-            dilations = [1, 1, 1]
+
+        strides = [2, 1, 1]
+        paddings = [1, 1, 1]
+        dilations = [1, 1, 1]
 
         layers = [BasicBlock(in_ch=256, out_ch=512, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
                   BasicBlock(in_ch=512, out_ch=512, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
                   BasicBlock(in_ch=512, out_ch=512, stride=strides[2], padding=paddings[2], dilation=dilations[2], downsample=None)]
 
         self.layer4 = nn.Sequential(*layers)
+        if output_stride !=32:
+            self.make_dilated(output_stride=output_stride)
 
     def forward(self, x):
         layers = OrderedDict()
@@ -267,15 +271,43 @@ class ResNet34(nn.Module):
 
         return layers
 
+    def get_stages(self):
+        return [
+            nn.Identity(),
+            nn.Sequential(self.conv1, self.bn1, self.relu),
+            nn.Sequential(self.maxpool, self.layer1),
+            self.layer2,
+            self.layer3,
+            self.layer4,
+        ]
+    
+    def make_dilated(self, output_stride):
+        print(f"making dilated model")
+        if output_stride == 16:
+            stage_list=[5,]
+            dilation_list=[2,]
+            
+        elif output_stride == 8:
+            stage_list=[4, 5]
+            dilation_list=[2, 4] 
+
+        else:
+            raise ValueError("Output stride should be 16 or 8, got {}.".format(output_stride))
+        
+        stages = self.get_stages()
+        for stage_indx, dilation_rate in zip(stage_list, dilation_list):
+            replace_strides_with_dilation(
+                module=stages[stage_indx],
+                dilation_rate=dilation_rate,
+            )
 
 class ResNet50(nn.Module):
     """
     check if we can simplify the replace_stride_with_dilation if statement
     """
-    def __init__(self, num_classes=3, replace_stride_with_dilation=False):
+    def __init__(self, num_classes=3, output_stride=32):
         super().__init__()
         self.num_classes = num_classes
-        self.replace_stride_with_dilation = replace_stride_with_dilation
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -308,24 +340,14 @@ class ResNet50(nn.Module):
         self.layer2 = nn.Sequential(*layers)
 
         # third Bottleneck block
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
-
-        layers = [nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(1024)
                   ]
         
         downsample = nn.Sequential(*layers)
-        if self.replace_stride_with_dilation:
-            strides = [1, 1, 1, 1, 1, 1]
-            paddings = [1, 2, 2, 2, 2, 2]
-            dilations = [1, 2, 2, 2, 2, 2]
-        else:
-            strides = [2, 1, 1, 1, 1, 1]
-            paddings = [1, 1, 1, 1, 1, 1]
-            dilations = [1, 1, 1, 1, 1, 1]
+        strides = [2, 1, 1, 1, 1, 1]
+        paddings = [1, 1, 1, 1, 1, 1]
+        dilations = [1, 1, 1, 1, 1, 1]
 
 
         layers = [Bottleneck(in_ch=512, mid_ch=256, out_ch=1024, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
@@ -339,25 +361,16 @@ class ResNet50(nn.Module):
         self.layer3 = nn.Sequential(*layers)
 
         # fourth Bottleneck block
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
 
-        layers = [nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(2048)
                   ]
 
         downsample = nn.Sequential(*layers)
 
-        if self.replace_stride_with_dilation:
-            strides = [1, 1, 1]
-            paddings = [2, 4, 4]
-            dilations = [2, 4, 4]
-        else:
-            strides = [2, 1, 1]
-            paddings = [1, 1, 1]
-            dilations = [1, 1, 1]
+        strides = [2, 1, 1]
+        paddings = [1, 1, 1]
+        dilations = [1, 1, 1]
 
         layers = [Bottleneck(in_ch=1024, mid_ch=512, out_ch=2048, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
                   Bottleneck(in_ch=2048, mid_ch=512, out_ch=2048, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
@@ -365,6 +378,8 @@ class ResNet50(nn.Module):
                   ]
 
         self.layer4 = nn.Sequential(*layers)
+        if output_stride !=32:
+            self.make_dilated(output_stride=output_stride)
 
     def forward(self, x):
         layers = OrderedDict()
@@ -384,15 +399,44 @@ class ResNet50(nn.Module):
 
         return layers
 
+    def get_stages(self):
+        return [
+            nn.Identity(),
+            nn.Sequential(self.conv1, self.bn1, self.relu),
+            nn.Sequential(self.maxpool, self.layer1),
+            self.layer2,
+            self.layer3,
+            self.layer4,
+        ]
+    
+    def make_dilated(self, output_stride):
+        print(f"making dilated model")
+        if output_stride == 16:
+            stage_list=[5,]
+            dilation_list=[2,]
+            
+        elif output_stride == 8:
+            stage_list=[4, 5]
+            dilation_list=[2, 4] 
+
+        else:
+            raise ValueError("Output stride should be 16 or 8, got {}.".format(output_stride))
+        
+        stages = self.get_stages()
+        for stage_indx, dilation_rate in zip(stage_list, dilation_list):
+            replace_strides_with_dilation(
+                module=stages[stage_indx],
+                dilation_rate=dilation_rate,
+            )
+
 
 class ResNet101(nn.Module):
     """
     check if we can simplify the replace_stride_with_dilation if statement
     """
-    def __init__(self, num_classes=3, replace_stride_with_dilation=False):
+    def __init__(self, num_classes=3, output_stride=32):
         super().__init__()
         self.num_classes = num_classes
-        self.replace_stride_with_dilation = replace_stride_with_dilation
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -425,24 +469,14 @@ class ResNet101(nn.Module):
         self.layer2 = nn.Sequential(*layers)
 
         # third Bottleneck block
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
-
-        layers = [nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(1024)
                   ]
         
         downsample = nn.Sequential(*layers)
-        if self.replace_stride_with_dilation:
-            strides = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            paddings = [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-            dilations = [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-        else:
-            strides = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            paddings = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            dilations = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        strides = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        paddings = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        dilations = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 
         layers = [Bottleneck(in_ch=512, mid_ch=256, out_ch=1024, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
@@ -473,25 +507,15 @@ class ResNet101(nn.Module):
         self.layer3 = nn.Sequential(*layers)
 
         # fourth Bottleneck block
-        if self.replace_stride_with_dilation:
-            stride=1
-        else:
-            stride=2
-
-        layers = [nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=1, stride=stride, bias=False), 
+        layers = [nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=1, stride=2, bias=False), 
                   nn.BatchNorm2d(2048)
                   ]
 
         downsample = nn.Sequential(*layers)
 
-        if self.replace_stride_with_dilation:
-            strides = [1, 1, 1]
-            paddings = [2, 4, 4]
-            dilations = [2, 4, 4]
-        else:
-            strides = [2, 1, 1]
-            paddings = [1, 1, 1]
-            dilations = [1, 1, 1]
+        strides = [2, 1, 1]
+        paddings = [1, 1, 1]
+        dilations = [1, 1, 1]
 
         layers = [Bottleneck(in_ch=1024, mid_ch=512, out_ch=2048, stride=strides[0], padding=paddings[0], dilation=dilations[0], downsample=downsample),
                   Bottleneck(in_ch=2048, mid_ch=512, out_ch=2048, stride=strides[1], padding=paddings[1], dilation=dilations[1], downsample=None),
@@ -499,6 +523,8 @@ class ResNet101(nn.Module):
                   ]
 
         self.layer4 = nn.Sequential(*layers)
+        if output_stride !=32:
+            self.make_dilated(output_stride=output_stride)
 
     def forward(self, x):
         layers = OrderedDict()
@@ -518,23 +544,58 @@ class ResNet101(nn.Module):
 
         return layers
 
+    def get_stages(self):
+        return [
+            nn.Identity(),
+            nn.Sequential(self.conv1, self.bn1, self.relu),
+            nn.Sequential(self.maxpool, self.layer1),
+            self.layer2,
+            self.layer3,
+            self.layer4,
+        ]
+    
+    def make_dilated(self, output_stride):
+        print(f"making dilated model")
+        if output_stride == 16:
+            stage_list=[5,]
+            dilation_list=[2,]
+            
+        elif output_stride == 8:
+            stage_list=[4, 5]
+            dilation_list=[2, 4] 
+
+        else:
+            raise ValueError("Output stride should be 16 or 8, got {}.".format(output_stride))
+        
+        stages = self.get_stages()
+        for stage_indx, dilation_rate in zip(stage_list, dilation_list):
+            replace_strides_with_dilation(
+                module=stages[stage_indx],
+                dilation_rate=dilation_rate,
+            )
+
 
 
 def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilation, progress=True):
+    if replace_stride_with_dilation:
+        print(f"replacing stride with dilation")
+        output_stride = 8
+    else:
+        output_stride = 32
     if encoder_name == "resnet18":
-        model = ResNet18(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        model = ResNet18(num_classes=num_classes, output_stride=output_stride)
         for param in model.parameters():
             param.requires_grad = True
     elif encoder_name == "resnet34":
-        model = ResNet34(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        model = ResNet34(num_classes=num_classes, output_stride=output_stride)
         for param in model.parameters():
             param.requires_grad = True
     elif encoder_name == "resnet50":
-        model = ResNet50(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        model = ResNet50(num_classes=num_classes, output_stride=output_stride)
         for param in model.parameters():
             param.requires_grad = True
     elif encoder_name == "resnet101":
-        model = ResNet101(num_classes=num_classes, replace_stride_with_dilation=replace_stride_with_dilation)
+        model = ResNet101(num_classes=num_classes, output_stride=output_stride)
         for param in model.parameters():
             param.requires_grad = True
     elif encoder_name == "resnet152":
@@ -559,12 +620,14 @@ def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilat
 
 
 def test():
-    x = torch.randn(20, 3, 256, 256).to("cuda")
-    for encoder_name in ["resnet34"]:
-        model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=True).to("cuda")
-        rn18_preds = model(x)["layer4"].to('cuda')
-        summary(model, x.shape)
-        print(f"{encoder_name}- {rn18_preds.shape=}")
+    x = torch.randn(20, 3, 256, 256)
+    for encoder_name in ["resnet18", "resnet34", "resnet50", "resnet101"]:
+        for output_stride in [True, False]:
+            model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=output_stride)
+            
+            rn18_preds = model(x)["layer4"]
+            #summary(model, x.shape)
+            print(f"{encoder_name}- {rn18_preds.shape=}")
 
 if __name__ == "__main__":
     test()
