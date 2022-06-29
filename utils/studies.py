@@ -14,7 +14,7 @@ def load_studies(path):
     df = pd.concat(studyDfs)
     df = df.dropna()
     df.reset_index(drop=True, inplace=True)
-    df.rename(columns={"value": "Objective Value", "user_attrs_architecture": "Architecture", "user_attrs_feature_extractor": "Feature Extractor"}, inplace=True)
+    df.rename(columns={"value": "Objective Value", "user_attrs_architecture": "Architecture", "user_attrs_encoder_name": "Feature Extractor"}, inplace=True)
     return df
 
 def select_best_architecture(data):

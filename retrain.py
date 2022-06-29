@@ -21,11 +21,11 @@ from utils.parser import create_train_parser
 def retrain_best_trial(args):
     seed_all(seed=args.seed)
     architecture:str = args.architecture
-    feature_extractor:str = args.feature_extractor
+    encoder_name:str = args.encoder_name
     
     root_path: str = args.root_path
     if args.db_name =="":
-        db_name:str = f"{architecture}_{feature_extractor}"
+        db_name:str = f"retrain_{architecture}_{encoder_name}"
     else:
         db_name = args.db_name
     print(f"loaded db {db_name}")
