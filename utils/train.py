@@ -11,7 +11,6 @@ import optuna
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from utils.manual_fcn import load_fcn_resnet
-import segmentation_models_pytorch as smp
 from utils.manual_unet import UNet
 from utils.manual_dlplus import DLv3plus
 
@@ -178,16 +177,8 @@ def set_model(architecture, encoder_name, pretrained, b_bilinear, replace_stride
     elif architecture == "unet":
         model = UNet(encoder_name=encoder_name)
     
-    elif architecture == "dlown":
-        model = DLv3plus(encoder_name=encoder_name)
-
-    elif architecture == "dlsmp":
-        model = smp.DeepLabV3Plus(
-            encoder_name=encoder_name,
-            encoder_weights="imagenet",
-            in_channels=3,                  
-            classes=3,                      
-        )
+    elif architecture == "dlplus":
+        model = DLv3plus(encoder_name=encoder_name, encoder_output_stride=8)
     else:
         raise NotImplementedError("Specified Model is not defined. Currently implemented architectures are: fcn, deeplabv3. Currently implemented feature extractors: resnet50, resnet101")
     return model

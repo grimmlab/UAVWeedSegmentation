@@ -1,11 +1,8 @@
-from json import encoder
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .manual_resnet import load_resnet
 from .manual_unet import initialize_decoder, initialize_head
-from segmentation_models_pytorch.encoders import get_encoder
-
 
 
 class ASPPConv(nn.Sequential):
@@ -123,7 +120,7 @@ class ASPP(nn.Module):
         return self.project(res)
 
 
-class DeepLabV3PlusDecoder(nn.Module):
+class DLv3PlusDecoder(nn.Module):
     def __init__(
         self,
         encoder_channels,
@@ -176,7 +173,7 @@ class DeepLabV3PlusDecoder(nn.Module):
         return fused_features
 
 
-class DeepLabV3Head(nn.Sequential):
+class DLv3plusHead(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size=3, upsampling=1):
         layers = [
             nn.Dropout(0.1), # dropout was not used initially, but added to match FCN and reduce overfitting
@@ -197,7 +194,6 @@ class DLv3plus(nn.Module):
             encoder_output_stride: int = 16,
             decoder_channels: int = 256,
             decoder_atrous_rates: tuple = (12, 24, 36),
-            in_channels: int = 3,
             num_classes: int = 3,
             upsampling: int = 4,
     ):
@@ -207,15 +203,10 @@ class DLv3plus(nn.Module):
             raise ValueError(
                 "Encoder output stride should be 8 or 16, got {}".format(encoder_output_stride)
             )
-        #torch.Size([50, 3, 256, 256]), torch.Size([50, 64, 128, 128]), torch.Size([50, 64, 64, 64]), torch.Size([50, 128, 32, 32]), torch.Size([50, 256, 16, 16]), torch.Size([50, 512, 16, 16])
-        self.encoder = get_encoder(
-            encoder_name,
-            in_channels=in_channels,
-            depth=5,
-            weights='imagenet',
-            output_stride=encoder_output_stride,
-        ) # --> stride 16. not 32
-
+        if encoder_name in ["resnet18", "resnet34"]:
+            encoder_channels = (3, 64, 64, 128, 256, 512)
+        elif encoder_name in ["resnet50","resnet101"]:
+            encoder_channels = (3, 64, 256, 512, 1024, 2048)
         self.backbone = load_resnet(
             encoder_name=encoder_name, 
             num_classes=num_classes, 
@@ -223,14 +214,14 @@ class DLv3plus(nn.Module):
             replace_stride_with_dilation=True
             )
 
-        self.decoder = DeepLabV3PlusDecoder(
-            encoder_channels=self.encoder.out_channels,
+        self.decoder = DLv3PlusDecoder(
+            encoder_channels=encoder_channels,
             out_channels=decoder_channels,
             atrous_rates=decoder_atrous_rates,
             output_stride=encoder_output_stride,
         )
 
-        self.segmentation_head = DeepLabV3Head(
+        self.segmentation_head = DLv3plusHead(
             in_channels=self.decoder.out_channels,
             out_channels=num_classes,
             kernel_size=1,
@@ -244,19 +235,7 @@ class DLv3plus(nn.Module):
         initialize_head(self.segmentation_head)
 
     def forward(self, x):
-        features = [self.backbone(x)[layer] for layer in ["layer0", "layer1", "layer2", "layer3", "layer4"]]
-        #features = self.encoder(x)
-        print([feature.shape for feature in features])
-        
+        features = [self.backbone(x)[layer] for layer in ["layer0", "layer1", "layer2", "layer3", "layer4"]]      
         decoder_output = self.decoder(*features)
         masks = self.segmentation_head(decoder_output)
         return masks
-
-
-
-
-def load_dl_resnet():
-    pass
-
-if __name__ == "__main__":
-    load_dl_resnet()

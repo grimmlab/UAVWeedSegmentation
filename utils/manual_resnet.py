@@ -3,7 +3,6 @@
 import torch
 import torch.nn as nn
 from collections import OrderedDict
-from torchinfo import summary
 from torchvision._internally_replaced_utils import load_state_dict_from_url
 
 model_urls = {
@@ -626,7 +625,6 @@ def test():
             model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=output_stride)
             
             rn18_preds = model(x)["layer4"]
-            #summary(model, x.shape)
             print(f"{encoder_name}- {rn18_preds.shape=}")
 
 if __name__ == "__main__":
