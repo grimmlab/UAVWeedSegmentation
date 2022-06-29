@@ -436,9 +436,9 @@ class ResNet101(nn.Module):
         
         downsample = nn.Sequential(*layers)
         if self.replace_stride_with_dilation:
-            strides = [1, 1, 1, 1, 1, 1]
-            paddings = [1, 2, 2, 2, 2, 2]
-            dilations = [1, 2, 2, 2, 2, 2]
+            strides = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            paddings = [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            dilations = [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         else:
             strides = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
             paddings = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
