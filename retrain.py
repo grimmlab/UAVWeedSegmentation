@@ -7,13 +7,11 @@ import math
 import optuna
 from utils.train import (
     seed_all,
-    set_study,
     set_model,
     get_calculated_means_stds_trainval, 
     get_patch_lists, 
     get_loaders, 
     train_epoch,
-    validate_epoch,
     save_checkpoint
 )
 from utils.parser import create_train_parser
@@ -57,6 +55,9 @@ def retrain_best_trial(args):
     lr_scheduler_patience = trial.user_attrs["lr_scheduler_patience"]
     architecture = trial.user_attrs["architecture"]
     encoder_name = trial.user_attrs["encoder_name"]
+    pretrained = trial.user_attrs["pretrained"]
+    b_bilinear = trial.user_attrs["b_bilinear"]
+    replace_stride_with_dilation = trial.user_attrs["replace_stride"]
     data_path = Path(root_path) / "data" 
 
     train_img_dir, train_msk_dir = get_patch_lists(
@@ -68,9 +69,9 @@ def retrain_best_trial(args):
     subset="test")
 
 
-    model_save_str = f"model_{architecture}_{encoder_name}_retrained.pt"
+    model_save_str = f"model_{architecture}_{encoder_name}_dil{int(replace_stride_with_dilation)}_bilin{int(b_bilinear)}_retrained.pt"
     model_save_path = Path(root_path) / "models" / model_save_str
-    model = set_model(architecture=architecture, encoder_name=encoder_name).to(device=device)
+    model = set_model(architecture=architecture, encoder_name=encoder_name, pretrained=pretrained, b_bilinear=b_bilinear, replace_stride_with_dilation=replace_stride_with_dilation, num_classes=3).to(device=device)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr = lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=lr_factor*0.1, min_lr=1e-6, patience=lr_scheduler_patience)

@@ -20,8 +20,10 @@ print(f"Using Seed {args.seed}")
 
 data_path = Path(root_path) / "data" 
 model_save_stem = model_save_path.split('/')[-1]
-architecture = model_save_stem.split('_')[-3]
-encoder_name = model_save_stem.split('_')[-2]
+architecture = model_save_stem.split('_')[1]
+encoder_name = model_save_stem.split('_')[2]
+replace_stride_with_dilation = model_save_stem.split('_')[3]
+b_bilinear = model_save_stem.split('_')[4]
 path_to_save = Path(root_path) / "results" / "predictions" / subset
 path_to_save.mkdir(parents=True, exist_ok=True)
 
@@ -46,7 +48,7 @@ test_loader = get_test_loader(
 
 loaded_model = torch.load(model_save_path)
 print(f"Loading: {architecture} {encoder_name} ...")
-model = set_model(architecture=architecture, encoder_name=encoder_name).to(device=device)
+model = set_model(architecture=architecture, encoder_name=encoder_name, pretrained=False, b_bilinear=b_bilinear, replace_stride_with_dilation=replace_stride_with_dilation, num_classes=3).to(device=device)
 model.load_state_dict(loaded_model)
 
 preds = predict(

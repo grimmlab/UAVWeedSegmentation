@@ -146,3 +146,4 @@ train_script_gpu1.sh
 train_script_unet.sh
 train_script_fcn_dilation.sh
 train_script_unet.sh
+results/retrain_unet_resnet34.db
