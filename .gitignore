@@ -1,4 +1,8 @@
 # project related
+data/*
+data/test_sharp
+data/test_blurry
+data/add_dataset
 data/trainval/patches
 data/trainval/trainval.hdf5
 data/test/patches
@@ -8,7 +12,9 @@ models/*
 check_*
 db*
 save_*
-
+results/blurIndicators
+results/predictions/test_different_bbch/difference/*
+results/predictions/test/difference/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
