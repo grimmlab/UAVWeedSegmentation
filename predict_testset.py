@@ -49,7 +49,7 @@ test_loader = get_test_loader(
 loaded_model = torch.load(model_save_path)
 print(f"Loading: {architecture} {encoder_name} ...")
 model = set_model(architecture=architecture, encoder_name=encoder_name, pretrained=False, b_bilinear=b_bilinear, replace_stride_with_dilation=replace_stride_with_dilation, num_classes=3).to(device=device)
-model.load_state_dict(loaded_model)
+model.load_state_dict(loaded_model["state_dict"])
 
 preds = predict(
     model=model, 
