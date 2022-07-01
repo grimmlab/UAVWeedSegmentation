@@ -45,7 +45,7 @@ def predict_one_batch(model, inputs, targets, device):
         inputs = inputs.float().to(device=device)
         targets = targets.long().to(device=device)
 
-        predictions = model(inputs)["out"]
+        predictions = model(inputs)
         probabilities = torch.sigmoid(predictions.squeeze(1))
         predicted_masks = (probabilities >= 0.5).float() * 1
         predicted_masks = torch.argmax(predicted_masks.int(), dim=1)
