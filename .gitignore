@@ -1,4 +1,5 @@
 # project related
+data/WeedMap
 data/trainval/patches
 data/trainval/trainval.hdf5
 data/test/patches
