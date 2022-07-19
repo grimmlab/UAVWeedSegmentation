@@ -34,7 +34,7 @@ test_imgs, test_msks = get_patch_lists(
 test_complete_img_ls, _ = get_file_lists(
     data_path, 
     subset=subset)
-
+    
 img_shape = load_image(path = str(test_complete_img_ls[0])).shape
 means, stds = get_calculated_means_stds_trainval()       
 
@@ -51,12 +51,12 @@ print(f"Loading: {architecture} {encoder_name} ...")
 model = set_model(architecture=architecture, encoder_name=encoder_name, pretrained=False, b_bilinear=b_bilinear, replace_stride_with_dilation=replace_stride_with_dilation, num_classes=3).to(device=device)
 model.load_state_dict(loaded_model["state_dict"])
 
+print(f"Predicting...")
 preds = predict(
     model=model, 
     test_loader=test_loader, 
     device=device)
 
-print(f"Predicting...")
 print("Combining Slices...")
 colored_predictions = reshape_predictions_to_images(preds=preds, labels=[(199, 199, 199), (31, 119, 180), (255, 127, 14)], mask_shape =img_shape[:2])
 print(f"Saving Predictions to {path_to_save}...")
