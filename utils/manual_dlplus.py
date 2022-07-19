@@ -1,3 +1,4 @@
+# this script is inspired by the pytorch_semantic_segmentation package
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

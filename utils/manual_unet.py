@@ -1,3 +1,4 @@
+# this script is inspired by the pytorch_semantic_segmentation package
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -35,6 +36,7 @@ class DecoderBlock(nn.Module):
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.conv2 = nn.Conv2d(in_channels= out_ch, out_channels=out_ch, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_ch)
+
     def forward(self, x, skip=None):
         x = F.interpolate(x, scale_factor=2, mode="nearest")
         if skip is not None:

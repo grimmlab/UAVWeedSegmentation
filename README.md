@@ -11,6 +11,7 @@ This repository provides the source code for "Deep Learning-based Early Weed Seg
 ## Requirements
 - Python 3.8
 - Compatible Graphics Card with CUDA >9 and cuDNN installed
+- PyTorch 1.11.0
 
 ## Installation
 1. Clone this project
@@ -25,14 +26,14 @@ pip install -r requirements.txt
 ```
 3. Download and install pytorch with GPU support that is compatible with your GPU
 
-4. Download trained model from Mendeley Data (https://doi.org/10.17632/4hh45vkp38.1) and paste the unzipped model in `/models`
+4. Download trained model from Mendeley Data (https://doi.org/10.17632/4hh45vkp38.2) and paste the unzipped model in `/models`
 
 ## Predict on new UAV images
 Now, we can predict weeds in new UAV images using following script:
 ```
 python3 predict_testset.py [model_path] [subset]
 # example
-python3 predict_testset.py models/model_fcn_resnet50_downloaded.pt test
+python3 predict_testset.py models/model_unet_resnet34.pt test
 ```
 where:
 - model_path is the path to the trained model `.pt` file
@@ -67,8 +68,9 @@ python3 train.py [architecture] [feature_extractor]
 python3 train.py fcn resnet50
 ```
 where:
-- architecture is either "fcn" or "deeplabv3"
-- feature_extractor is either "resnet50" or "resnet101"
+- architecture is either "fcn8s", "fcn16s", "fcn32s", "unet" or "dlplus"
+- feature_extractor is either "resnet18", "resnet34", "resnet50" or "resnet101"
+- replace_stride_with_dilation is either True or False
 
 ## Examine Training Databases
 When using the script `train.py`, a database will be saved in `/results` containing all trials in this study. There is an own database for each feature extractor and architecture. These databases can be examined to select the best model architecture and feature extractor. Additionally, Table 3 of the Paper can be generated using this script.
@@ -83,5 +85,5 @@ A freshly initialized model will be trained on the complete training and validat
 ```
 python3 retrain.py [architecture] [feature_extractor]
 # example
-python3 retrain.py fcn resnet50
+python3 retrain.py unet resnet34
 ```

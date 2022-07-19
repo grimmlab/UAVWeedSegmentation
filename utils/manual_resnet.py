@@ -29,7 +29,7 @@ class BasicBlock(nn.Module):
                      padding=padding, dilation=dilation, bias=False)
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(in_channels=out_ch, out_channels=out_ch, kernel_size=3, stride=1, # TODO: check if that is always 1
+        self.conv2 = nn.Conv2d(in_channels=out_ch, out_channels=out_ch, kernel_size=3, stride=1,
                      padding=1, dilation=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_ch)
         self.downsample = downsample
@@ -80,8 +80,8 @@ class Bottleneck(nn.Module):
 
         out += identity
         out = self.relu(out)
-
         return out
+
 
 class ResNet18(nn.Module):
     def __init__(self, num_classes=3, output_stride=32):
@@ -154,7 +154,6 @@ class ResNet18(nn.Module):
         layers["layer3"]=x
         x = self.layer4(x)
         layers["layer4"]=x
-
         return layers
 
     def get_stages(self):
@@ -267,7 +266,6 @@ class ResNet34(nn.Module):
         layers["layer3"]=x
         x = self.layer4(x)
         layers["layer4"]=x
-
         return layers
 
     def get_stages(self):
@@ -619,13 +617,11 @@ def load_resnet(encoder_name, num_classes, pretrained, replace_stride_with_dilat
 
 
 def test():
-    x = torch.randn(20, 3, 256, 256)
-    for encoder_name in ["resnet18", "resnet34", "resnet50", "resnet101"]:
+    x = torch.randn(20, 3, 256, 256).to("cuda")
+    for encoder_name in ["resnet34"]:
         for output_stride in [True, False]:
-            model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=output_stride)
-            
+            model = load_resnet(encoder_name=encoder_name, num_classes=3, pretrained=True, replace_stride_with_dilation=output_stride).to("cuda")
             rn18_preds = model(x)["layer4"]
-            print(f"{encoder_name}- {rn18_preds.shape=}")
 
 if __name__ == "__main__":
     test()

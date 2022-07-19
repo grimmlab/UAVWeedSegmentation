@@ -28,13 +28,8 @@ def retrain_best_trial(args):
         db_name = args.db_name
     print(f"loaded db {db_name}")
     # Parameters
-    max_epochs:int = 100
-    es_patience:int = 10
-    lr_scheduler_patience:int = 5
-    loss_total:float = 1
-    epochs_no_improve:int = 0
-    scaler = torch.cuda.amp.GradScaler()
-    study_storage = f"sqlite:///{root_path}/results/{db_name}.db"
+    # NEED TO CHANGE THIS LINE OF CODE TO RE-TRAIN DIFFERENT MODELS
+    study_storage = f"sqlite:///{root_path}/results/checking/{architecture}/save_unet_resnet34_dil0_bilin1_pre1.db"
     studies = optuna.study.get_all_study_summaries(storage=study_storage)
     loaded_study = optuna.load_study(study_name=studies[0].study_name, storage=study_storage)
     trial = loaded_study.best_trial
@@ -77,7 +72,7 @@ def retrain_best_trial(args):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=lr_factor*0.1, min_lr=1e-6, patience=lr_scheduler_patience)
     means, stds = get_calculated_means_stds_trainval()       
 
-    train_loader, valid_loader = get_loaders(
+    train_loader, _ = get_loaders(
             train_img_dir = train_img_dir,
             train_msk_dir = train_msk_dir,
             valid_img_dir = valid_img_dir, 
@@ -89,7 +84,7 @@ def retrain_best_trial(args):
             pin_memory = True,
         )
 
-
+    max_epochs = 33
     scaler = torch.cuda.amp.GradScaler()
     for epoch in range(max_epochs):
         train_loss = train_epoch(
@@ -102,22 +97,13 @@ def retrain_best_trial(args):
             )
         checkpoint = {
             "state_dict": model.state_dict(),
-            #"optimizer":optimizer.state_dict(),
         }
         scheduler.step(train_loss)
-        if train_loss < loss_total:
-            loss_total = train_loss
-            save_checkpoint(checkpoint, filename=f"{str(model_save_path)}")
-        else:
-            epochs_no_improve+=1
+        save_checkpoint(checkpoint, filename=f"{str(model_save_path)}")
         # sometimes it can happen, that test_loss is nan --> cannot save nan to database, so we need to change it
         if math.isnan(train_loss):
             train_loss = 99999
-        
-        if epochs_no_improve >= es_patience:
-            print(f"Early Stopping on epoch {epoch}")
-            break
-    print(f"Loss on Train set: {train_loss}")
+        print(f"Loss on Train set: {train_loss}")
     return train_loss
 
 

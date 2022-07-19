@@ -31,7 +31,6 @@ class FCNtv(nn.Module):
     without any skip connections between intermediate layers
     The interpolation will make [B, C, 64, 64] --> [B, C, 256, 256]
     Currently implemented is only bilinear interpolation. 
-    TODO: add transposeConv upsampling here
     """
     def __init__(self, encoder_name, backbone, head, num_classes=3, n_upsample=32, b_bilinear=True, replace_stride_with_dilation=False):
         super().__init__()
@@ -54,7 +53,6 @@ class FCNtv(nn.Module):
 class FCNskip(nn.Module):
 
     def __init__(self, encoder_name, backbone, head, num_classes=3, n_upsample=32, b_bilinear=True, replace_stride_with_dilation=False):
-        # TODO: init deconv as bilinear
         super().__init__()
         self.n_upsample = n_upsample
         self.encoder_name = encoder_name
@@ -126,13 +124,8 @@ class FCNskip(nn.Module):
             x = self.bn(x + layer2)
             # final upsampling: here x8. This was fixed in the original paper
             x = F.interpolate(x, size=input_shape, mode="bilinear", align_corners=False)
-
-                
-
-        else: 
+        else:
             raise NotImplementedError(f"Upsampling of {self.n_upsample} is not implemented. Use either, 8, 16 or 32")
-
-
         return x
 
 
@@ -173,35 +166,4 @@ def load_fcn_resnet(encoder_name, num_classes=3, pretrained = False, replace_str
         else:
             raise NotImplementedError(f"upsampling of {n_upsample} not implemented when not using dilation")
 
-        # TODO: make it work with other models than resnet50 
-    #if replace_stride_with_dilation == True:
-
-    #    print("replacing stride")
-    #    n_upsample = 8
-    #fcn = FCN(encoder_name, backbone, head, num_classes=num_classes, n_upsample=n_upsample, b_bilinear=b_bilinear, replace_stride_with_dilation=replace_stride_with_dilation, b_bn=b_bn)
-    return fcn 
-
-
-
-def test():
-    x = torch.randn(2, 3, 256, 256).to("cuda")
-    for encoder_name in ["resnet50"]:
-        for n_upsample in [8]:
-            for replace_stride in [True]:
-                model = load_fcn_resnet(encoder_name, 
-                num_classes=3, 
-                pretrained = True, 
-                replace_stride_with_dilation=replace_stride, 
-                n_upsample=n_upsample, 
-                b_bilinear=True,
-                b_bn=False
-                ).to("cuda")
-                preds = model(x)
-                print(f"{encoder_name} n_upsample: {n_upsample} replace: {replace_stride}:{preds.shape=}")
-
-
-                #assert x.shape == preds.shape, "shapes do not match"
-
-
-if __name__ == "__main__":
-    test()
+    return fcn
