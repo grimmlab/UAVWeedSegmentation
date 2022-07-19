@@ -16,7 +16,7 @@ def create_train_parser():
 
     my_parser.add_argument('architecture',
                         type=str,
-                        help='String of an architecture, implemented: fcn, fcn8s, fcn16s, fcn32s, deeplabv3')
+                        help='String of an architecture, implemented: fcn8s, fcn16s, fcn32s, unet, dlplus')
 
     my_parser.add_argument('encoder_name',
                         type=str,
@@ -32,11 +32,11 @@ def create_train_parser():
 
     my_parser.add_argument('--pretrained',
                         help='Bool, if True will use a pretrained feature extractor (on ImageNet)',
-                        action='store_true')
+                        action='store_true', default=True)
     
     my_parser.add_argument('--b_bilinear',
                         help='Bool, if True will use bilinear interpolation, if False will use transposed convolutions',
-                        action='store_true')
+                        action='store_true', default=True)
 
     my_parser.add_argument('--replace_stride_with_dilation',
                         help='Bool, if True will replace strides with dilated convolutions',
@@ -60,7 +60,7 @@ def create_train_parser():
 
     my_parser.add_argument('--batch_size',
                         type=int,
-                        help='Number patches per batch', default=130)
+                        help='Number patches per batch', default=100)
 
     my_parser.add_argument('--n_trials',
                         type=int,

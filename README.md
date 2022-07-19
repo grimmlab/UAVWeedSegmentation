@@ -92,10 +92,10 @@ python3 train.py fcn resnet50
 where:
 - architecture is either "fcn8s", "fcn16s", "fcn32s", "unet" or "dlplus"
 - feature_extractor is either "resnet18", "resnet34", "resnet50" or "resnet101"
-- replace_stride_with_dilation is either True or False
+- --replace_stride_with_dilation, if using dilation
 
 ## Examine Training Databases
-When using the script `train.py`, a database will be saved in `/results` containing all trials in this study. There is an own database for each feature extractor and architecture. These databases can be examined to select the best model architecture and feature extractor. Additionally, Table 3 of the Paper can be generated using this script.
+When using the script `train.py`, a database will be saved in `results/` containing all trials in this study. There is an own database for each feature extractor and architecture. The studies trained for the publication are saved in several subfolders in `results/studies` can be examined to select the best model architecture and feature extractor. Therefore, change the path in the script `compare_studies.py`. Additionally, Table 3 of the Paper can be generated using this script.
 
 ```
 python3 compare_studies.py

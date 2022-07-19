@@ -1,7 +1,5 @@
 import cv2
 from torch.utils.data import Dataset
-import h5py
-import numpy as np
 
 class UAVDatasetPatches(Dataset):
     def __init__(self, img_list, msk_list, transform=None):

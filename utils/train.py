@@ -72,38 +72,6 @@ def seed_all(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
-def get_loadersh5(h5file, fold, mean, std, batch_size, num_workers=4, pin_memory=True):
-    train_transform = A.Compose(
-        [    
-            A.HorizontalFlip(),
-            A.VerticalFlip(),
-            A.CLAHE(),
-            A.RandomRotate90(),
-            A.Transpose(),
-            A.Normalize(
-                #mean = mean,
-                #std = std,
-            #    max_pixel_value=255.0
-            ),
-            ToTensorV2(),
-        ]
-    )
-    valid_transform = A.Compose(
-        [
-            A.Normalize(
-                #mean = mean,
-                #std = std,
-            #    max_pixel_value=255.0
-            ),
-            ToTensorV2(),
-        ]
-    )
-    train_ds = UAVDatasetPatchesH5(h5file=h5file, fold=fold, mode="train", transform=train_transform)
-    train_loader = DataLoader(train_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=True)
-    valid_ds = UAVDatasetPatchesH5(h5file=h5file, fold=fold, mode="val", transform=valid_transform)
-    valid_loader = DataLoader(valid_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, shuffle=False)
-    return train_loader, valid_loader
-
 def get_loaders(train_img_dir, train_msk_dir, valid_img_dir ,valid_msk_dir, mean, std, batch_size, num_workers=4, pin_memory=True):
     train_transform = A.Compose(
         [    

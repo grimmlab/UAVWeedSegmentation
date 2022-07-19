@@ -1,5 +1,4 @@
 from pathlib import Path
-from skimage import io as skio
 import matplotlib
 matplotlib.rcParams.update({'font.size': 14})
 from utils.parser import create_compare_parser
