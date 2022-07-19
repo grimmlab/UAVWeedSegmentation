@@ -36,7 +36,7 @@ Predictions are based on a hold-out test-set.
 ## Installation
 1. Clone this project
 ```
-git clone https://github.com/grimmlab/UAVWeedSegmentation.git
+git clone git@github.com:grimmlab/UAVWeedSegmentation.git
 ```
 
 2. Install requirements
