@@ -2,16 +2,36 @@
 
 This repository provides the source code for "Deep Learning-based Early Weed Segmentation using UAV Images of Sorghum Fields". 
 
-# Example Predictions
+## Results on the Test-Set
+The results of the best performing model (UNet + ResNet-34) are shown. 
 
+### Per-class Metrics
+
+| class | precision | recall | f1-score | support | 
+| -----: | ---------: |-------: | --------: | ------: |
+| Background | 99.66 | 99.85 | 99.75 | 58448620 |
+| Sorghum | 90.93 | 86.86 | 88.85 | 1018913 | 
+| Weed | 86.52 | 72.77 | 79.95 | 418035 |
+| macro avg | **92.37** | **86.49** | **89.22** | 59885568 |
+| weighted avg | 99.42 | 99.44 | 99.42 | 59885568 |
+
+### Confusion Matrix
+The confusion matrix shows per-class accuracies for Background (BG), Sorghum (S) and Weed (W).
+<p align="center">
+    <img src="readme_fig/cm_subset_test.png" alt="Example Patches with Predictions" width="300"/>
+</p>
+
+
+### Example Predictions
+Predictions are based on a hold-out test-set.
 <p align="center">
     <img src="readme_fig/example_pred.jpg" alt="Example Patches with Predictions" width="600"/>
 </p>
 
 ## Requirements
 - Python 3.8
-- Compatible Graphics Card with CUDA >9 and cuDNN installed
 - PyTorch 1.11.0
+- Compatible Graphics Card with CUDA >9 and cuDNN installed
 
 ## Installation
 1. Clone this project
