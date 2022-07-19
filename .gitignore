@@ -1,4 +1,5 @@
 # project related
+data/WeedMap
 data/*
 data/test_sharp
 data/test_blurry
