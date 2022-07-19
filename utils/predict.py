@@ -111,6 +111,7 @@ def reshape_predictions_to_images(preds, labels, mask_shape =(3648, 5472)):
         grid = (10,11)
     else: 
         raise NotImplementedError(f"{mask_shape=} not implemented.")
+    print(f"{preds.shape=}")
     preds_labelmaps = get_slices_per_image(preds, slc_per_image=slc_per_image)
     for lab in preds_labelmaps:
         lab_full = combine_labelmap_from_slices(lab, grid=grid)

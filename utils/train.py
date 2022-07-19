@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 import kornia
-from utils.dataset import UAVDatasetPatches, UAVDatasetPatchesH5
+from utils.dataset import UAVDatasetPatches
 from torch.utils.data import DataLoader
 import random
 import os
