@@ -2,31 +2,53 @@
 
 This repository provides the source code for "Deep Learning-based Early Weed Segmentation using UAV Images of Sorghum Fields". 
 
+<p align="center">
+    <img src="readme_fig/supfigure4.jpg" alt="" width="100%"/>
+</p>
+
+**Figure 1**: Sharpness assessment for the dataset used in this study. The calculated sharpness matches the manual assessment of this dataset, 
+as images 04, 05, 06 and 10 from the trainval dataset were relatively 
+sharper as the other captures. The test-set captures were degraded 
+with different degrees of motion blur with 01, 02 and 03 being blurred 
+the most. The color code matches in the sub-figures. **a** Relative 
+Sharpness Value based on TVoL. Lower values indicate a higher degree 
+of motion blur. Most captures in the dataset were blurred, but there 
+were also some relatively sharper images present. **b** Flight plan of the
+used dataset showing the location of the captures. Gray dots indicate 
+captures that were not annotated. Relatively sharp captures were located
+at the edges of the flight plan, where the drone was flying slower 
+to rotate, as indicated by the limegreen, brown, pink, yellow and cyan
+dots. **c** Example patches from the captures, where color of the border
+indicates the corresponding capture.
+
 ## Results on the Test-Set
 The results of the best performing model (UNet + ResNet-34) are shown. 
 
 ### Per-class Metrics
 
-| class | precision | recall | f1-score | support | 
-| -----: | ---------: |-------: | --------: | ------: |
-| Background | 99.66 | 99.85 | 99.75 | 58448620 |
-| Sorghum | 90.93 | 86.86 | 88.85 | 1018913 | 
-| Weed | 86.52 | 72.77 | 79.95 | 418035 |
-| macro avg | **92.37** | **86.49** | **89.22** | 59885568 |
-| weighted avg | 99.42 | 99.44 | 99.42 | 59885568 |
+|        class | precision |    recall |  f1-score |   support | 
+|-------------:|----------:|----------:|----------:|----------:|
+|   Background |     99.80 |     99.93 |     99.86 | 137909280 |
+|      Sorghum |     91.58 |     86.10 |     88.76 |   1249145 | 
+|         Weed |     87.64 |     72.71 |     79.48 |    574567 |
+|    macro avg | **93.01** | **86.25** | **89.37** | 139732992 |
+| weighted avg |     99.68 |     99.69 |     99.68 | 139732992 |
 
 ### Confusion Matrix
 The confusion matrix shows per-class accuracies for Background (BG), Sorghum (S) and Weed (W).
 <p align="center">
-    <img src="readme_fig/cm_subset_test.png" alt="Example Patches with Predictions" width="300"/>
+    <img src="readme_fig/cm_subset_test.jpg" alt="Confusion Matrix" width="100%"/>
 </p>
 
+**Figure 2**: Normalized confusion matrix by support size in percent shows the pixel-based classification results on the hold-out test-set. Background/soil is denoted by BG, sorghum by S and weed by W. **a** Test images with a high degree of motion blur (test_01 to test_03, as indicated in Figure 1). **b** Test images with less degree of motion blur (test_04 to test_07, as indicated in Figure 1).
 
 ### Example Predictions
 Predictions are based on a hold-out test-set.
 <p align="center">
-    <img src="readme_fig/example_pred.jpg" alt="Example Patches with Predictions" width="600"/>
+    <img src="readme_fig/example_pred.jpg" alt="Example Patches with Predictions" width="100%"/>
 </p>
+
+**Figure 3**: Qualitative results on the hold-out test-set. Image patches of size 400x400 pixel² are cropped from each test image to show more details. Background (BG) is colored in gray, sorghum (S) in blue and weed (W) pixels in orange. The difference map shows only the misclassifications between ground truth and prediction. **a-c** Examples with a high degree of motion blur. **a** The general shape of weeds is predicted correctly. **b** Large weed plants that could not be removed before sowing the field. Most pixels are predicted correctly. There are small artifacts visible, which are due to the patching process. **c** Weeds intersecting with sorghum plants were predicted correctly. **d-f** Examples with a low degree of motion blur showing weeds and sorghum plants from different captures. The general shape is predicted correctly. **d** Patch from test_04. **e** Patch from test_05. **f** Patch from test_06. 
 
 ## Requirements
 - Python 3.8
@@ -46,7 +68,7 @@ pip install -r requirements.txt
 ```
 3. Download and install pytorch with GPU support that is compatible with your GPU
 
-4. Download trained model from Mendeley Data (https://doi.org/10.17632/4hh45vkp38.2) and paste the unzipped model in `/models`. Rename the model to `model_unet_resnet34_dil0_bilin1_retrained.pt`
+4. Download trained model from Mendeley Data (https://doi.org/10.17632/4hh45vkp38.3) and paste the unzipped model in `/models`.
 
 ## Predict on new UAV images
 Now, we can predict weeds in new UAV images using following script:
