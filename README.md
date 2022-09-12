@@ -69,7 +69,7 @@ pip install -r requirements.txt
 3. Download and install pytorch with GPU support that is compatible with your GPU
 
 4. Download trained model from Mendeley Data (https://doi.org/10.17632/4hh45vkp38.3) and paste the unzipped model in `/models`.
-
+Rename the model to `model_unet_resnet34_dil0_bilin1_retrained.pt` to match the parsing of the script `predict_testset`.
 ## Predict on new UAV images
 Now, we can predict weeds in new UAV images using following script:
 ```
@@ -77,7 +77,7 @@ python3 save_patches.py
 python3 predict_testset.py [model_path] [subset]
 # example
 python3 save_patches.py
-python3 predict_testset.py models/model_unet_resnet34.pt test
+python3 predict_testset.py models/model_unet_resnet34_dil0_bilin1_retrained.pt test
 ```
 where:
 - model_path is the path to the trained model `.pt` file
