@@ -131,3 +131,8 @@ python3 retrain.py [architecture] [feature_extractor]
 # example
 python3 retrain.py unet resnet34
 ```
+
+# Publication and Citation
+Deep Learning-based Early Weed Segmentation using Motion Blurred UAV Images of Sorghum Fields  
+N Genze, R Ajekwe, Z Güreli, F Haselbeck, M Grieb, DG Grimm  
+Computers and Electronics in Agriculture, 2022 (https://doi.org/10.1016/j.compag.2022.107388) 
